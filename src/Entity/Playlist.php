@@ -32,13 +32,11 @@ class Playlist
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $updateAt = null;
 
-    #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'playlist_idPlaylist')]
-    private Collection $songs;
+    #[ORM\ManyToOne(inversedBy: 'Playlist_idPlaylist')]
+    private ?PlaylistHasSong $playlistHasSong = null;
 
     public function __construct()
-    {
-        $this->songs = new ArrayCollection();
-    }
+    {}
 
     public function getId(): ?int
     {
@@ -105,29 +103,14 @@ class Playlist
         return $this;
     }
 
-    /**
-     * @return Collection<int, Song>
-     */
-    public function getSongs(): Collection
+    public function getPlaylistHasSong(): ?PlaylistHasSong
     {
-        return $this->songs;
+        return $this->playlistHasSong;
     }
 
-    public function addSong(Song $song): static
+    public function setPlaylistHasSong(?PlaylistHasSong $playlistHasSong): static
     {
-        if (!$this->songs->contains($song)) {
-            $this->songs->add($song);
-            $song->addPlaylistIdPlaylist($this);
-        }
-
-        return $this;
-    }
-
-    public function removeSong(Song $song): static
-    {
-        if ($this->songs->removeElement($song)) {
-            $song->removePlaylistIdPlaylist($this);
-        }
+        $this->playlistHasSong = $playlistHasSong;
 
         return $this;
     }

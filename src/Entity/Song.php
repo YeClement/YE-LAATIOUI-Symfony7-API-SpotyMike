@@ -36,16 +36,15 @@ class Song
     #[ORM\ManyToMany(targetEntity: Artist::class, inversedBy: 'songs')]
     private Collection $Artist_idUser;
 
-    #[ORM\ManyToMany(targetEntity: Playlist::class, inversedBy: 'songs')]
-    private Collection $playlist_idPlaylist;
-
     #[ORM\ManyToOne(inversedBy: 'song_idSong')]
     private ?Album $album = null;
+
+    #[ORM\ManyToOne(inversedBy: 'Song_idSong')]
+    private ?PlaylistHasSong $playlistHasSong = null;
 
     public function __construct()
     {
         $this->Artist_idUser = new ArrayCollection();
-        $this->playlist_idPlaylist = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -149,30 +148,6 @@ class Song
         return $this;
     }
 
-    /**
-     * @return Collection<int, Playlist>
-     */
-    public function getPlaylistIdPlaylist(): Collection
-    {
-        return $this->playlist_idPlaylist;
-    }
-
-    public function addPlaylistIdPlaylist(Playlist $playlistIdPlaylist): static
-    {
-        if (!$this->playlist_idPlaylist->contains($playlistIdPlaylist)) {
-            $this->playlist_idPlaylist->add($playlistIdPlaylist);
-        }
-
-        return $this;
-    }
-
-    public function removePlaylistIdPlaylist(Playlist $playlistIdPlaylist): static
-    {
-        $this->playlist_idPlaylist->removeElement($playlistIdPlaylist);
-
-        return $this;
-    }
-
     public function getAlbum(): ?Album
     {
         return $this->album;
@@ -181,6 +156,18 @@ class Song
     public function setAlbum(?Album $album): static
     {
         $this->album = $album;
+
+        return $this;
+    }
+
+    public function getPlaylistHasSong(): ?PlaylistHasSong
+    {
+        return $this->playlistHasSong;
+    }
+
+    public function setPlaylistHasSong(?PlaylistHasSong $playlistHasSong): static
+    {
+        $this->playlistHasSong = $playlistHasSong;
 
         return $this;
     }
