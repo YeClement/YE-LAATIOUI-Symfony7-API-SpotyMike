@@ -53,7 +53,10 @@ class UserController extends AbstractController
     
     $data = json_decode($request->getContent(), true);
 
-    
+    $existingEmail = $this->repository->findOneBy(['email'=> $data['email']]);
+    if ($existingEmail !== null)
+    return new JsonResponse([ 'Email has already been used']);
+     
     $user = new User();
 
    
