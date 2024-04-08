@@ -1,158 +1,132 @@
 <?php
 
 namespace App\Controller;
+
 use App\Entity\User;
-use Doctrine\ORM\EntityManager;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class UserController extends AbstractController
-  
 {
+    private $repository;
     private $entityManager;
-    private $repository ; 
-    
 
     public function __construct(EntityManagerInterface $entityManager)
     {
-     $this->entityManager =  $entityManager ;
-     $this->repository =  $entityManager->getRepository(User::class) ;
+        $this->entityManager = $entityManager;
+        $this->repository = $entityManager->getRepository(User::class);
     }
 
-
-    #[Route('/user', name: 'app_user', methods: ['GET'])]
-    public function index(): JsonResponse
+    #[Route('/user', name: 'user_post', methods: 'POST')]
+    public function create(Request $request, UserPasswordHasherInterface $passwordHasher, EntityManagerInterface $entityManager): JsonResponse
     {
-        
-        $users = $this->repository->findAll();
+        $data = json_decode($request->getContent(), true);
 
-
-        $usersArray = [];
-        foreach ($users as $user) {
-            $usersArray[] = [
-                'id' => $user->getId(),
-                'idUser' => $user->getIdUser(),
-                'name' => $user->getName(),
-                'email' => $user->getEmail(),
-                'encrypte' => $user->getEncrypte(),
-                'tel' => $user->getTel(),
-                'createAt' => $user->getCreateAt() ? $user->getCreateAt()->format('Y-m-d H:i:s') : null,
-              'updateAt' => $user->getUpdateAt() ? $user->getUpdateAt()->format('Y-m-d H:i:s') : null,
-                
-            ];
+        if (!is_array($data)) {
+            return $this->json(['message' => 'Invalid request data.'], JsonResponse::HTTP_BAD_REQUEST);
         }
-        return $this->json($usersArray);
+
+        $user = new User();
+        $user->setName($data['name'] ?? '');
+        $user->setEmail($data['email'] ?? '');
+        $user->setIdUser($data['idUser'] ?? '');
+        if (isset($data['tel']) && preg_match("/^[0-9]{10}$/", $data['tel'])) {
+            $user->setTel($data['tel']);
+        } else if (isset($data['tel'])) {
+            return $this->json(['message' => 'Invalid telephone number .'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        $createdAt = isset($data['createAt']['date']) ? new DateTimeImmutable($data['createAt']['date']) : new DateTimeImmutable();
+        $user->setCreateAt($createdAt);
+        $user->setUpdateAt($createdAt);
+
+        if (!empty($data['password'])) {
+            $hash = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hash);
+        } else {
+            $user->setPassword($passwordHasher->hashPassword($user, 'defaultPassword'));
+        }
+
+        $entityManager->persist($user);
+        $entityManager->flush();
+
+        return $this->json([
+            'message' => 'User created successfully',
+            
+        ], JsonResponse::HTTP_CREATED);
     }
 
-    #[Route('/user', name: 'create_user', methods: ['POST'])]
-    public function createUser(Request $request, EntityManagerInterface $entityManager): JsonResponse
-{
-    
-    $data = json_decode($request->getContent(), true);
+    #[Route('/user/{id}', name: 'user_update', methods: ['PUT'])]
+    public function update(Request $request, UserPasswordHasherInterface $passwordHasher, EntityManagerInterface $entityManager, int $id): JsonResponse
+    {
+        $user = $this->repository->find($id);
 
-    $existingEmail = $this->repository->findOneBy(['email'=> $data['email']]);
-    if ($existingEmail !== null)
-    return new JsonResponse([ 'Email has already been used']);
-     
-    $user = new User();
+        if (!$user) {
+            return $this->json(['message' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
 
-   
-    if (isset($data['idUser'])) {
-        $user->setIdUser($data['idUser']);
-    }
-    if (isset($data['name'])) {
-        $user->setName($data['name']);
-    }
+        $data = json_decode($request->getContent(), true);
 
-    if (isset($data['email'])) {
-        $user->setEmail($data['email']);
-    }
-    if (isset($data['encrypte'])) {
-        $user->setEncrypte($data['encrypte']);
-    }
-    
-    if (isset($data['tel'])) {
-        $user->setTel($data['tel']);
-    }
+        if (isset($data['name'])) {
+            $user->setName($data['name']);
+        }
+        if (isset($data['email'])) {
+            $user->setEmail($data['email']);
+        }
+        if (isset($data['tel']) && preg_match("/^[0-9]{10}$/", $data['tel'])) {
+            $user->setTel($data['tel']);
+        } else if (isset($data['tel'])) {
+            return $this->json(['message' => 'Invalid telephone number .'], JsonResponse::HTTP_BAD_REQUEST);
+        
+        }
+        if (isset($data['password'])) {
+            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hashedPassword);
+        }
 
-    if (isset($data['createAt'])) {
-        $user->setCreateAt(new \DateTimeImmutable($data['createAt']));
-    }
+        $user->setUpdateAt(new DateTimeImmutable());
+        $entityManager->flush();
 
-    if (isset($data['updateAt'])) {
-        $user->setUpdateAt(new \DateTimeImmutable($data['updateAt']));
-    }
-    
-    $entityManager->persist($user);
-    $entityManager->flush();
-
-     
-    return new JsonResponse([ 'User created successfully']);
-
-    
-}
-#[Route('/user/{id}', name: 'update_user', methods: ['PUT'])]
-public function updateUser(Request $request, EntityManagerInterface $entityManager, int $id): JsonResponse
-{
-    $data = json_decode($request->getContent(), true);
-
-    
-    $userRepository = $entityManager->getRepository(User::class);
-    $user = $userRepository->find($id);
-
-    
-    if (!$user) {
-        return new JsonResponse([ 'User not found']);
+        return $this->json([
+            'message' => 'User updated successfully',
+        ], JsonResponse::HTTP_OK);
     }
 
-    
-    if (isset($data['idUser'])) {
-        $user->setIdUser($data['idUser']);
-    }
-    if (isset($data['name'])) {
-        $user->setName($data['name']);
-    }
-    if (isset($data['email'])) {
-        $user->setEmail($data['email']);
-    }
-    if (isset($data['tel'])) {
-        $user->setTel($data['tel']);
-    }
-    if (isset($data['createAt'])) {
-        $user->setCreateAt(new \DateTimeImmutable($data['createAt']));
-    }
-    if (isset($data['updateAt'])) {
-        $user->setUpdateAt(new \DateTimeImmutable($data['updateAt']));
+    #[Route('/user/{id}', name: 'user_delete', methods: 'DELETE')]
+    public function delete(int $id): JsonResponse
+    {
+        $user = $this->repository->find($id);
+
+        if (!$user) {
+            return new JsonResponse(['error' => 'user not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        $this->entityManager->remove($user);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['message' => 'user deleted successfully'], JsonResponse::HTTP_OK);
     }
 
-    
-    $entityManager->flush();
+    #[Route('/user', name: 'user_get_all', methods: 'GET')]
+    public function readAll(): JsonResponse
+    {
+        $result = [];
 
-    
-    return new JsonResponse(['User updated successfully']);
-}
-
-
-
-#[Route('/user/{id}', name: 'delete_user', methods: ['DELETE'])]
-public function deleteUser(EntityManagerInterface $entityManager, int $id): JsonResponse
-{
-   
-    $userRepository = $entityManager->getRepository(User::class);
-    $user = $userRepository->find($id);
-
-   
-    if (!$user) {
-        return new JsonResponse([ 'User not found']);
+            $users = $this->repository->findAll();
+            if (count($users) > 0) {
+                foreach ($users as $user) {
+                    array_push($result, $user->serializer());
+                }
+                return new JsonResponse(['data' => $result,'message' => 'Successful'], JsonResponse::HTTP_OK);
+            }
+            return new JsonResponse([ 'message' => 'No users found' ], JsonResponse::HTTP_NOT_FOUND);
+        
     }
-
-    $entityManager->remove($user);
-    $entityManager->flush();
-
-    return new JsonResponse([ 'User deleted successfully']);
-}
-
 }

@@ -16,7 +16,7 @@ class Artist
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\OneToOne(inversedBy: 'artist', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(inversedBy: 'artist', cascade: ['remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $User_idUser = null;
 
@@ -34,6 +34,12 @@ class Artist
 
     #[ORM\OneToMany(targetEntity: Album::class, mappedBy: 'artist_User_idUser')]
     private Collection $albums;
+
+    #[ORM\ManyToOne(inversedBy: 'relation')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Label $artistlabel = null;
+
+    
 
     public function __construct()
     {
@@ -142,7 +148,6 @@ class Artist
     public function removeAlbum(Album $album): static
     {
         if ($this->albums->removeElement($album)) {
-            // set the owning side to null (unless already changed)
             if ($album->getArtistUserIdUser() === $this) {
                 $album->setArtistUserIdUser(null);
             }
@@ -150,4 +155,30 @@ class Artist
 
         return $this;
     }
+
+    public function serializer($children = false)
+    {
+        return [
+            "id" => $this->getId(),
+            "idUser" => ($children) ? $this->getUserIdUser() : null,
+            "fullname" => $this->getFullname(),
+            "label" => $this->getLabel(),
+            "description" => $this->getDescription(),
+            "songs" => $this->getSongs()
+        ];
+    }
+
+    public function getArtistlabel(): ?Label
+    {
+        return $this->artistlabel;
+    }
+
+    public function setArtistlabel(?Label $artistlabel): static
+    {
+        $this->artistlabel = $artistlabel;
+
+        return $this;
+    }
+
+    
 }
