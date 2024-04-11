@@ -8,54 +8,63 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 class ArtistController extends AbstractController
 {
     private $entityManager;
     private $artistRepository;
+    private $security;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    public function __construct(EntityManagerInterface $entityManager,TokenStorageInterface $tokenStorage)
     {
         $this->entityManager = $entityManager;
         $this->artistRepository = $entityManager->getRepository(Artist::class);
+        $this->tokenStorage = $tokenStorage;
     }
 
     #[Route('/artist', name: 'artist_create', methods: 'POST')]
-public function create(Request $request): JsonResponse
-{
-    $data = json_decode($request->getContent(), true);
+    public function create(Request $request): JsonResponse
+    {
+        $token = $this->tokenStorage->getToken();
+        $user = $token ? $token->getUser() : null;
 
-    if (!is_array($data)) {
-        return $this->json(['message' => 'Invalid request data.'], JsonResponse::HTTP_BAD_REQUEST);
+        if (!$user instanceof UserInterface) {
+            return $this->json(['message' => 'Authentication requise . Vous devez etre connecté pour effectuer cette action'], JsonResponse::HTTP_FORBIDDEN);
+        }
+        
+
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['fullname'], $data['label']) || !is_array($data)) {
+            return $this->json([
+                'message' => 'L id du label et le fullname sont obligatoires.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $artist = new Artist();
+            $artist->setFullname($data['fullname']);
+            $artist->setLabel($data['label']);
+            $artist->setDescription($data['description'] ?? '');
+
+            $this->entityManager->persist($artist);
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => "Votre compte d'artiste a été créé avec succès. Bienvenue dans notre communauté d'artistes !",
+                'artist_id' => $artist->getId(),
+            ], JsonResponse::HTTP_CREATED);
+        } catch (\Exception $e) {
+            return $this->json([
+                'message' => 'An error occurred while creating the artist account.',
+                'error' => $e->getMessage(), 
+            ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    $userId = $data['user_id_user_id'] ?? null;
-
-    if (!$userId) {
-        return $this->json(['message' => 'User ID is required for creating an artist.'], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    $user = $this->entityManager->getRepository(User::class)->find($userId);
-
-    if (!$user) {
-        return $this->json(['message' => 'User not found.'], JsonResponse::HTTP_NOT_FOUND);
-    }
-
-    $artist = new Artist();
-    $artist->setUserIdUser($user); // Corrected method name
-    $artist->setFullname($data['fullname'] ?? '');
-    $artist->setLabel($data['label'] ?? '');
-    $artist->setDescription($data['description'] ?? '');
-
-    $this->entityManager->persist($artist);
-    $this->entityManager->flush();
-
-    return $this->json([
-        'message' => 'Artist created successfully',
-        'artist' => $artist->serializer()
-    ], JsonResponse::HTTP_CREATED);
-}
 
 
     #[Route('/artist/{id}', name: 'artist_delete', methods: 'DELETE')]

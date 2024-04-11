@@ -5,68 +5,68 @@ namespace App\Entity;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    // #[ORM\Id]
-    #[ORM\Column(length: 90, unique:true)]
-    private ?string $idUser = null;
+    #[ORM\Column(length: 55)]
+    private ?string $firstname = null;
 
     #[ORM\Column(length: 55)]
-    private ?string $name = null;
+    private ?string $lastname = null;
 
-    #[ORM\Column(length: 80, unique:true)]
+    #[ORM\Column(length: 80, unique: true)]
     private ?string $email = null;
-
-    #[ORM\Column(length: 90)]
-    private ?string $encrypte = null;
 
     #[ORM\Column(length: 15, nullable: true)]
     private ?string $tel = null;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $createAt = null;
+    private ?bool $sexe = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface $updateAt = null;
+    #[ORM\Column(type: "datetime_immutable")]
+    private ?\DateTimeImmutable $createdAt = null;
 
-    #[ORM\OneToOne(mappedBy: 'User_idUser', cascade: ['persist', 'remove'])]
+    #[ORM\Column(type: "datetime_immutable")]
+    private ?\DateTimeImmutable $updatedAt = null;
+
+    #[ORM\Column(type: 'datetime')]
+    private ?\DateTimeInterface $dateBirth;
+
+    #[ORM\OneToOne(mappedBy: 'user', targetEntity: Artist::class, cascade: ['persist', 'remove'])]
     private ?Artist $artist = null;
+
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getIdUser(): ?string
+    public function getFirstname(): ?string
     {
-        return $this->idUser;
+        return $this->firstname;
     }
 
-    public function setIdUser(string $idUser): static
+    public function setFirstname(string $firstname): self
     {
-        $this->idUser = $idUser;
-
+        $this->firstname = $firstname;
         return $this;
     }
 
-    public function getName(): ?string
+    public function getLastname(): ?string
     {
-        return $this->name;
+        return $this->lastname;
     }
 
-    public function setName(string $name): static
+    public function setLastname(string $lastname): self
     {
-        $this->name = $name;
-
+        $this->lastname = $lastname;
         return $this;
     }
 
@@ -75,13 +75,65 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->email;
     }
 
-    public function setEmail(string $email): static
+    public function setEmail(string $email): self
     {
         $this->email = $email;
-
         return $this;
     }
 
+    public function getTel(): ?string
+    {
+        return $this->tel;
+    }
+
+    public function setTel(?string $tel): self
+    {
+        $this->tel = $tel;
+        return $this;
+    }
+
+    public function getSexe(): ?bool
+    {
+        return $this->sexe;
+    }
+
+    public function setSexe(bool $sexe): self
+    {
+        $this->sexe = $sexe;
+        return $this;
+    }
+
+    public function getDateBirth(): ?\DateTimeInterface
+    {
+        return $this->dateBirth;
+    }
+
+    public function setDateBirth(\DateTimeInterface $dateBirth): self
+    {
+        $this->dateBirth = $dateBirth;
+        return $this;
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->UpdatedAt;
+    }
+
+    public function setUpdatedAt(\DateTimeImmutable $UpdatedAt): self
+    {
+        $this->UpdatedAt = $UpdatedAt;
+        return $this;
+    }
     public function getPassword(): ?string
     {
         return $this->encrypte;
@@ -93,53 +145,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $this;
     }
-
-    public function getTel(): ?string
-    {
-        return $this->tel;
-    }
-
-    public function setTel(?string $tel): static
-    {
-        $this->tel = $tel;
-
-        return $this;
-    }
-
-    public function getCreateAt(): ?\DateTimeImmutable
-    {
-        return $this->createAt;
-    }
-
-    public function setCreateAt(\DateTimeImmutable $createAt): static
-    {
-        $this->createAt = $createAt;
-
-        return $this;
-    }
-
-    public function getUpdateAt(): ?\DateTimeInterface
-    {
-        return $this->updateAt;
-    }
-
-    public function setUpdateAt(\DateTimeInterface $updateAt): static
-    {
-        $this->updateAt = $updateAt;
-
-        return $this;
-    }
-
     public function getArtist(): ?Artist
     {
         return $this->artist;
     }
 
-    public function setArtist(Artist $artist): static
+    public function setArtist(?Artist $artist): self
     {
-        // set the owning side of the relation if necessary
-        if ($artist->getUserIdUser() !== $this) {
-            $artist->setUserIdUser($this);
+        
+        if ($artist !== null && $artist->getUser() !== $this) {
+            $artist->setUser($this);
         }
 
         $this->artist = $artist;
@@ -156,20 +171,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     }
 
-    public function getUserIdentifier(): string{
-        return "";
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email; 
     }
 
-    public function serializer()
-    {
-        return [
-            "id" => $this->getId(),
-            "idUser" => $this->getIdUser(),
-            "name" => $this->getName(),
-            "email" => $this->getEmail(),
-            "tel" => $this->getTel(),
-            "createAt" => $this->getCreateAt(),
-            "artist" => $this->getArtist() ?  $this->getArtist()->serializer() : [],
-        ];
-    }
+    public function serializer(): array
+{
+    return [
+        "id" => $this->getId(),
+        "firstname" => $this->getFirstname(),
+        "lastname" => $this->getLastname(),
+        "email" => $this->getEmail(),
+        "tel" => $this->getTel(),
+        "sexe" => $this->getSexe(),
+        "dateBirth" => $this->getDateBirth() ? $this->getDateBirth()->format('Y-m-d') : null,
+        "createdAt" => $this->getCreatedAt()->format('c'),
+        "artist" => $this->getArtist() ? $this->getArtist()->serializer() : null,
+    ];
+}
+
 }

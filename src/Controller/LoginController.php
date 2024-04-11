@@ -2,42 +2,43 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
-use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use App\Repository\UserRepository;
+
 
 class LoginController extends AbstractController
 {
-    private $entityManager;
-    private $repository;
-
-    public function __construct(EntityManagerInterface $entityManager)
+    #[Route('/login', name: 'login', methods: ['POST'])]
+    public function login(Request $request, UserPasswordHasherInterface $passwordHasher, JWTTokenManagerInterface $JWTManager, UserRepository $userRepository): JsonResponse
     {
-        $this->entityManager = $entityManager;
-        $this->repository = $entityManager->getRepository(User::class);
+        // Decode the JSON from the request
+        $data = json_decode($request->getContent(), true);
 
-    }
+        // Validate required fields
+        if (!isset($data['email'])) {
+            return new JsonResponse(['error' => 'Email and password fields are required'], JsonResponse::HTTP_BAD_REQUEST);
+        }
 
-    #[Route('/login', name: 'app_login_get',methods:'GET')]
-    public function index(): JsonResponse
-    {
-        return $this->json([
-            'message' => 'Welcome to your new controller!',
-            'path' => 'src/Controller/LoginController.php',
-        ]);
-    }
+        // Attempt to find the user by email
+        $user = $userRepository->findOneBy(['email' => $data['email']]);
 
-    #[Route('/login', name: 'app_login_post',methods:['POST','PUT'])]
-    public function login(Request $request): JsonResponse
-    {
-        return $this->json([
-            'message' => 'Welcome to your new controller!',
-            'data' => $request->getContent(),
-            'path' => 'src/Controller/LoginController.php',
-        ]);
+        // User not found
+        if (!$user) {
+            return new JsonResponse(['error' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        /* Password validation
+        if (!$passwordHasher->isPasswordValid($user, $data['password'])) {
+            return new JsonResponse(['error' => 'Invalid credentials'], JsonResponse::HTTP_UNAUTHORIZED);
+        }*/
+
+        // Generate and return the JWT
+        $token = $JWTManager->create($user);
+        return new JsonResponse(['token' => $token]);
     }
 }
