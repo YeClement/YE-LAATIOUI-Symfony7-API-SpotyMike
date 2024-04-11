@@ -36,11 +36,14 @@ class User implements UserInterface
     #[ORM\Column(type: "datetime_immutable")]
     private ?\DateTimeImmutable $updatedAt = null;
 
+
+
     #[ORM\Column(type: 'datetime')]
     private ?\DateTimeInterface $dateBirth;
 
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Artist::class, cascade: ['persist', 'remove'])]
     private ?Artist $artist = null;
+   
 
 
     public function getId(): ?int
@@ -126,14 +129,15 @@ class User implements UserInterface
     }
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
-        return $this->UpdatedAt;
+    return $this->updatedAt;
     }
 
-    public function setUpdatedAt(\DateTimeImmutable $UpdatedAt): self
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): self
     {
-        $this->UpdatedAt = $UpdatedAt;
-        return $this;
+    $this->updatedAt = $updatedAt;
+    return $this;
     }
+
     public function getPassword(): ?string
     {
         return $this->encrypte;
@@ -178,18 +182,27 @@ class User implements UserInterface
     }
 
     public function serializer(): array
-{
-    return [
-        "id" => $this->getId(),
-        "firstname" => $this->getFirstname(),
-        "lastname" => $this->getLastname(),
-        "email" => $this->getEmail(),
-        "tel" => $this->getTel(),
-        "sexe" => $this->getSexe(),
-        "dateBirth" => $this->getDateBirth() ? $this->getDateBirth()->format('Y-m-d') : null,
-        "createdAt" => $this->getCreatedAt()->format('c'),
-        "artist" => $this->getArtist() ? $this->getArtist()->serializer() : null,
-    ];
-}
+    {
+        return [
+            "id" => $this->getId(),
+            "firstname" => $this->getFirstname(),
+            "lastname" => $this->getLastname(),
+            "email" => $this->getEmail(),
+            "tel" => $this->getTel(),
+            "sexe" => $this->getSexe(),
+            "dateBirth" => $this->getDateBirth() ? $this->getDateBirth()->format('Y-m-d') : null,
+            "createdAt" => $this->getCreatedAt()->format('c'),
+            "updatedAt" => $this->getUpdatedAt()->format('c'),
+            "artist" => $this->getArtist() ? $this->getArtist()->serializer() : null,
+        ];
+    }
+    
+    public function __construct() {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable(); // Correct initialization
+    }
+    
+    
+    
 
 }

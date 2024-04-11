@@ -41,6 +41,7 @@ class UserController extends AbstractController
         $user->setSexe((bool) $data['sexe']);
         $user->setDateBirth(new DateTimeImmutable($data['dateBirth']));
         $user->setCreatedAt(new DateTimeImmutable());
+        $user->setUpdatedAt(new DateTimeImmutable());
 
         if (!empty($data['password'])) {
             $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
@@ -109,15 +110,15 @@ class UserController extends AbstractController
     }
 
     #[Route('/user', name: 'user_get_all', methods: ['GET'])]
-    public function readAll(): JsonResponse
-    {
-        $users = $this->entityManager->getRepository(User::class)->findAll();
-        $data = array_map(function ($user) {
-            return $user->serializer();
-        }, $users);
+public function readAll(): JsonResponse
+{
+    $users = $this->entityManager->getRepository(User::class)->findAll();
+    $data = array_map(function ($user) {
+        return $user->serializer();
+    }, $users);
 
-        return new JsonResponse(['data' => $data, 'message' => 'Successful'], JsonResponse::HTTP_OK);
-    }
+    return new JsonResponse(['data' => $data, 'message' => 'Successful'], JsonResponse::HTTP_OK);
+}
 
     #[Route('/user-info', name: 'get_user_info_from_token', methods: ['GET'])]
     public function getUserInfoFromToken(Request $request): JsonResponse

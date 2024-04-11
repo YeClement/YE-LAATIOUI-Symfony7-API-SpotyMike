@@ -31,21 +31,45 @@ class ArtistController extends AbstractController
         $token = $this->tokenStorage->getToken();
         $user = $token ? $token->getUser() : null;
 
-        if (!$user instanceof UserInterface) {
-            return $this->json(['message' => 'Authentication requise . Vous devez etre connecté pour effectuer cette action'], JsonResponse::HTTP_FORBIDDEN);
-        }
         
+        
+    if (!$user instanceof UserInterface) {
+        return $this->json(['message' => 'Authentication requise . Vous devez etre connecté pour effectuer cette action'], JsonResponse::HTTP_FORBIDDEN);
+    }
 
-        $data = json_decode($request->getContent(), true);
+    
+    $dateOfBirth = $user->getDateBirth();
+    $today = new \DateTimeImmutable();
+    $age = $today->diff($dateOfBirth)->y;
 
-        if (!isset($data['fullname'], $data['label']) || !is_array($data)) {
-            return $this->json([
-                'message' => 'L id du label et le fullname sont obligatoires.'
-            ], JsonResponse::HTTP_BAD_REQUEST);
-        }
+    if ($age < 16) {
+        return $this->json(['message' => 'Vous devez avoir au moins 16 ans pour être artiste'], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    
+    if ($user->getArtist()) {
+        return $this->json(['message' => 'Un utilisateur ne peut gérer qu’un seul compte existant pour créer un nouveau'], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    $data = json_decode($request->getContent(), true);
+
+    if (!isset($data['fullname'], $data['label']) || !is_array($data)) {
+        return $this->json(['message' => 'L\'id du label et le fullname sont obligatoires'], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    if ($this->entityManager->getRepository(Artist::class)->findOneBy(['fullname' => $data['fullname']])) {
+        return $this->json(['message' => 'Ce nom d\'artiste est déjà pris, veuillez choisir un autre'], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    //TO CHANGE AFTER
+    if (strlen($data['label']) > 3) {
+        return $this->json(['message' => 'Le label ne respecte pas le format attendu'], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
 
         try {
             $artist = new Artist();
+            $artist->setUser($user);
             $artist->setFullname($data['fullname']);
             $artist->setLabel($data['label']);
             $artist->setDescription($data['description'] ?? '');

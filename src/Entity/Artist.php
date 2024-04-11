@@ -17,9 +17,10 @@ class Artist
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\OneToOne(targetEntity: User::class, inversedBy: 'artist', cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(name: "id", referencedColumnName: "id")]
-    private ?User $user = null;
+    #[ORM\OneToOne(inversedBy: 'artist', targetEntity: User::class, cascade: ['persist', 'remove'])]
+     private ?User $user = null;
+
+
 
     #[ORM\Column(length: 90)]
     private ?string $fullname = null;
