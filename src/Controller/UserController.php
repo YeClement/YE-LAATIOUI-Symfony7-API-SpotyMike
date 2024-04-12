@@ -204,4 +204,40 @@ class UserController extends AbstractController
             'message' => 'Un email de réinitialisation de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l\'email pour réinitialiser votre mot de passe.'
         ], JsonResponse::HTTP_OK);
     }
+
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['GET'])]
+    public function resetPassword(Request $request, UserPasswordHasherInterface $passwordHasher, string $token): JsonResponse
+    {
+        $requestData = json_decode($request->getContent(), true);
+
+        if (!$token) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l\'email de réinitialisation de mot de passe.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        if (!isset($requestData['password'])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Veuillez fournir un nouveau mot de passe.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $newPassword = $requestData['password'];
+
+        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $newPassword)) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Le nouveau mot de passe ne respecte pas les critères requis. Il doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et être composé d\'au moins 8 caractères.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.'
+        ], JsonResponse::HTTP_OK);
+    }
 }
