@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20240412024113 extends AbstractMigration
+final class Version20240412092735 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -20,16 +20,12 @@ final class Version20240412024113 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE artist ADD user_id INT DEFAULT NULL');
-        $this->addSql('ALTER TABLE artist ADD CONSTRAINT FK_1599687A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
-        $this->addSql('CREATE UNIQUE INDEX UNIQ_1599687A76ED395 ON artist (user_id)');
+        $this->addSql('ALTER TABLE user DROP password, CHANGE dateBirth date_birth DATETIME NOT NULL');
     }
 
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE artist DROP FOREIGN KEY FK_1599687A76ED395');
-        $this->addSql('DROP INDEX UNIQ_1599687A76ED395 ON artist');
-        $this->addSql('ALTER TABLE artist DROP user_id');
+        $this->addSql('ALTER TABLE user ADD password VARCHAR(255) NOT NULL, CHANGE date_birth dateBirth DATETIME NOT NULL');
     }
 }

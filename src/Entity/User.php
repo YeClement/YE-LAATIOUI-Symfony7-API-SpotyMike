@@ -2,13 +2,13 @@
 
 namespace App\Entity;
 
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User implements UserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -30,13 +30,14 @@ class User implements UserInterface
     #[ORM\Column]
     private ?bool $sexe = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $password = null;
+
     #[ORM\Column(type: "datetime_immutable")]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(type: "datetime_immutable")]
     private ?\DateTimeImmutable $updatedAt = null;
-
-
 
     #[ORM\Column(type: 'datetime')]
     private ?\DateTimeInterface $dateBirth;
@@ -44,8 +45,6 @@ class User implements UserInterface
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Artist::class, cascade: ['persist', 'remove'])]
     private ?Artist $artist = null;
    
-
-
     public function getId(): ?int
     {
         return $this->id;
@@ -140,15 +139,15 @@ class User implements UserInterface
 
     public function getPassword(): ?string
     {
-        return $this->encrypte;
+        return $this->password;
     }
-
-    public function setPassword(string $encrypte): static
+    
+    public function setPassword(string $password): self
     {
-        $this->encrypte = $encrypte;
-
+        $this->password = $password;
         return $this;
     }
+    
     public function getArtist(): ?Artist
     {
         return $this->artist;
@@ -197,10 +196,11 @@ class User implements UserInterface
         ];
     }
     
-    public function __construct() {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable(); // Correct initialization
-    }
+public function __construct() {
+    $this->createdAt = new \DateTimeImmutable();
+    $this->updatedAt = new \DateTimeImmutable();
+    $this->dateBirth = new \DateTimeImmutable(); 
+}
     
     
     
