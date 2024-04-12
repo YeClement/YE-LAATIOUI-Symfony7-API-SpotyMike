@@ -3,6 +3,7 @@
 namespace App\Controller;
 use App\Entity\User;
 use App\Entity\Artist;
+use App\Repository\ArtistRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -10,6 +11,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 class ArtistController extends AbstractController
@@ -132,33 +134,70 @@ class ArtistController extends AbstractController
         }
     }
 
-    #[Route('/artist/{id}', name: 'artist_update', methods: ['PUT'])]
-public function update(Request $request, int $id): JsonResponse
+    #[Route('/artist/{id}', name: 'artist_update', methods: ['POST'])]
+public function updateArtist(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
 {
-    $artist = $this->artistRepository->find($id);
-
+    $artist = $entityManager->getRepository(Artist::class)->find($id);
     if (!$artist) {
         return $this->json(['message' => 'Artist not found'], JsonResponse::HTTP_NOT_FOUND);
     }
 
     $data = json_decode($request->getContent(), true);
-
-    if (isset($data['fullname'])) {
-        $artist->setFullname($data['fullname']);
-    }
-    if (isset($data['label'])) {
-        $artist->setLabel($data['label']);
-    }
-    if (isset($data['description'])) {
-        $artist->setDescription($data['description']);
+    if (!isset($data['fullname'], $data['label'], $data['description'])) {
+        return $this->json(['message' => 'Missing required fields'], JsonResponse::HTTP_BAD_REQUEST);
     }
 
-    $this->entityManager->flush();
+    $artist->setFullname($data['fullname']);
+    $artist->setLabel($data['label']);
+    $artist->setDescription($data['description']);
+
+    $entityManager->persist($artist);
+    $entityManager->flush();
 
     return $this->json([
         'message' => 'Artist updated successfully',
-        'artist' => $artist->serializer()
+        'artist' => $artist->serializer()  // Assuming serializer() method exists to format the response
     ], JsonResponse::HTTP_OK);
 }
 
+#[Route('/artist/{id}', name: 'artist_get_by_id', methods: ['GET'])]
+public function getArtistById(int $id, Request $request, ArtistRepository $artistRepository): JsonResponse
+{
+    
+    $token = $this->tokenStorage->getToken();
+    $user = $token ? $token->getUser() : null;
+
+    
+    if (!$user || !$user->getArtist()) {
+        return $this->json([
+            'message' => 'Authentication required. You must be logged in and be an artist to perform this action.'
+        ], JsonResponse::HTTP_FORBIDDEN);
+    }
+
+   
+    $fullname = $request->query->get('fullname');
+    if (empty($fullname)) {
+        return $this->json([
+            'message' => 'Le nom d\'artiste est obligatoire pour cette requête.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    if (!preg_match('/^[a-zA-ZÀ-ÿ \'-]+$/u', $fullname)) {
+        return $this->json([
+            'message' => 'Le format du nom d\'artiste fourni est invalide.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    $artist = $artistRepository->findOneBy(['id' => $id, 'fullname' => $fullname]);
+    if (!$artist) {
+        return $this->json([
+            'message' => 'Aucun artiste trouvé correspondant au nom fourni.'
+        ], JsonResponse::HTTP_NOT_FOUND);
+    }
+
+    return $this->json([
+        'data' => $artist->serializer(),
+        'message' => 'Artist retrieved successfully'
+    ], JsonResponse::HTTP_OK);
+}
 }

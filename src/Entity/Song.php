@@ -27,7 +27,7 @@ class Song
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable(); // Initialize createdAt on object creation
+        $this->createdAt = new \DateTimeImmutable(); 
     }
 
     public function getId(): ?int
@@ -80,5 +80,16 @@ class Song
             $album->addSong($this);
         }
         return $this;
+    }
+
+    public function serializer(): array
+    {
+        return [
+            'id' => $this->getId(),
+            'title' => $this->getTitle(),
+            'cover' => $this->getCover(),
+            'createdAt' => $this->getCreatedAt()->format('c'), 
+            'album' => $this->getAlbum() ? $this->getAlbum()->getId() : null 
+        ];
     }
 }

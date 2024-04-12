@@ -20,6 +20,7 @@ class Artist
     #[ORM\OneToOne(inversedBy: 'artist', targetEntity: User::class, cascade: ['persist', 'remove'])]
      private ?User $user = null;
 
+     
 
 
     #[ORM\Column(length: 90)]
@@ -31,15 +32,14 @@ class Artist
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'Artist_idUser')]
-    private Collection $songs;
 
-    #[ORM\OneToMany(targetEntity: Album::class, mappedBy: 'artist_User_idUser')]
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Album::class, cascade: ['persist', 'remove'])]
     private Collection $albums;
+
 
     public function __construct()
     {
-        $this->songs = new ArrayCollection();
+   
         $this->albums = new ArrayCollection();
     }
 
@@ -92,31 +92,7 @@ class Artist
         return $this;
     }
 
-    /**
-     * @return Collection<int, Song>
-     */
-    public function getSongs(): Collection
-    {
-        return $this->songs;
-    }
-
-    public function addSong(Song $song): self
-    {
-        if (!$this->songs->contains($song)) {
-            $this->songs->add($song);
-            $song->addArtistIdUser($this);
-        }
-        return $this;
-    }
-
-    public function removeSong(Song $song): self
-    {
-        if ($this->songs->removeElement($song)) {
-            $song->removeArtistIdUser($this);
-        }
-        return $this;
-    }
-
+    
     /**
      * @return Collection<int, Album>
      */
@@ -145,14 +121,26 @@ class Artist
     }
 
     public function serializer(): array
-    {
+{
+    $user = $this->getUser();
+    $userData = $user ? [
+        'firstname' => $user->getFirstname(),
+        'lastname' => $user->getLastname(),
+        'sexe' => $user->getSexe(),
+        'dateBirth' => $user->getDateBirth()->format('Y-m-d'), 
+    ] : null;
+
+    return [
+        'id' => $this->getId(),
+        'fullname' => $this->getFullname(),
+        'label' => $this->getLabel(),
+        'description' => $this->getDescription(),
+        'user' => $userData,
+        'albums' => $this->getAlbums()->map(function ($album) {
+            return $album->serializer();
+        })->toArray(),
        
-        return [
-            'id' => $this->getId(),
-            'fullname' => $this->getFullname(),
-            'label' => $this->getLabel(),
-            'description' => $this->getDescription(),
-            
-        ];
-    }
+    ];
+}
+
 }

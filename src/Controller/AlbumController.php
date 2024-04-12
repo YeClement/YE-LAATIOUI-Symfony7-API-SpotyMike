@@ -3,65 +3,64 @@
 namespace App\Controller;
 
 use App\Entity\Album;
-use App\Repository\AlbumRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Doctrine\ORM\EntityManagerInterface;
 
 class AlbumController extends AbstractController
 {
     private $entityManager;
-    private $repository;
+    private $tokenStorage;
 
-    public function __construct(EntityManagerInterface $entityManager, AlbumRepository $repository)
+    public function __construct(EntityManagerInterface $entityManager, TokenStorageInterface $tokenStorage)
     {
         $this->entityManager = $entityManager;
-        $this->repository = $repository;
+        $this->tokenStorage = $tokenStorage;
     }
 
-    #[Route('/albums', name: 'album_list', methods: ['GET'])]
-    public function index(): JsonResponse
+    #[Route('/album', name: 'album_create', methods: ['POST'])]
+    public function create(Request $request): JsonResponse
     {
-        $albums = $this->repository->findAll();
+        $token = $this->tokenStorage->getToken();
+        $user = $token ? $token->getUser() : null;
 
-        $albumsArray = [];
-        foreach ($albums as $album) {
-            $albumsArray[] = [
-                'id' => $album->getId(),
-                'idAlbum' => $album->getIdAlbum(),
-                'nom' => $album->getNom(),
-                'categ' => $album->getCateg(),
-                'cover' => $album->getCover(),
-                'year' => $album->getYear(),
-                'artistUserId' => $album->getArtistUserIdUser() ? $album->getArtistUserIdUser()->getId() : null,
-            ];
+        if (!$user || !$user->getArtist()) {
+            return $this->json([
+                'message' => 'Authentication requise. Vous devez être connecté et être un artiste pour effectuer cette action'
+            ], JsonResponse::HTTP_FORBIDDEN);
         }
 
-        return $this->json($albumsArray);
-    }
-
-    #[Route('/album', name: 'album_create', methods: ['POST', 'PUT'])]
-    public function createOrUpdate(Request $request): JsonResponse
-    {
         $data = json_decode($request->getContent(), true);
-
-        $album = new Album();
-        $album->setIdAlbum($data['idAlbum'] ?? null);
-        $album->setNom($data['nom'] ?? null);
-        $album->setCateg($data['categ'] ?? null);
-        $album->setCover($data['cover'] ?? null);
-        $album->setYear($data['year'] ?? null);
-        
-        if (isset($data['artistUserId'])) {
-            $artist = $this->entityManager->getReference('App\Entity\Artist', $data['artistUserId']);
-            $album->setArtistUserIdUser($artist);
+        if (!isset($data['nom'], $data['categ'], $data['label'], $data['cover'], $data['year']) || !is_array($data)) {
+            return $this->json([
+                'message' => 'Missing required album fields'
+            ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        $this->entityManager->persist($album);
-        $this->entityManager->flush();
+        try {
+            $album = new Album();
+            $album->setNom($data['nom']);
+            $album->setCateg($data['categ']);
+            $album->setLabel($data['label']);
+            $album->setCover($data['cover']);
+            $album->setYear($data['year']);
+            $album->setArtist($user->getArtist());
 
-        return new JsonResponse(['message' => 'Album created or updated successfully'], JsonResponse::HTTP_CREATED);
+            $this->entityManager->persist($album);
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Album created successfully',
+               
+            ], JsonResponse::HTTP_CREATED);
+        } catch (\Exception $e) {
+            return $this->json([
+                'message' => 'An error occurred while creating the album.',
+                'error' => $e->getMessage(),
+            ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -21,6 +21,9 @@ class Album
     #[ORM\Column(type: 'string', length: 20)]
     private ?string $categ = null;
 
+    #[ORM\Column(type: 'string', length: 20)]
+    private ?string $label = null;
+
     #[ORM\Column(type: 'string', length: 125)]
     private ?string $cover = null;
 
@@ -28,10 +31,15 @@ class Album
     private ?int $year = null;
 
     #[ORM\ManyToOne(targetEntity: Artist::class, inversedBy: 'albums')]
-    private ?Artist $artist = null;
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Artist $artist;
+
 
     #[ORM\OneToMany(mappedBy: 'album', targetEntity: Song::class)]
     private Collection $songs;
+
+    
+
 
     #[ORM\Column(type: 'datetime_immutable')]
     private ?\DateTimeImmutable $createdAt;
@@ -69,6 +77,16 @@ class Album
         return $this;
     }
 
+    public function getLabel(): ?string
+    {
+        return $this->label;
+    }
+
+    public function setLabel(string $label): self
+    {
+        $this->label = $label;
+        return $this;
+    }
     public function getCover(): ?string
     {
         return $this->cover;
@@ -85,7 +103,7 @@ class Album
         return $this->year;
     }
 
-    public function setYear(int $year): self
+    public function setYear(string $year): self
     {
         $this->year = $year;
         return $this;
@@ -123,7 +141,7 @@ class Album
     public function removeSong(Song $song): self
     {
         if ($this->songs->removeElement($song)) {
-            // set the owning side to null (unless already changed)
+
             if ($song->getAlbum() === $this) {
                 $song->setAlbum(null);
             }
@@ -142,4 +160,22 @@ class Album
         $this->createdAt = $createdAt;
         return $this;
     }
+
+    public function serializer(): array
+{
+    $songs = $this->songs->map(function (Song $song) {
+        return $song->serializer();
+    })->toArray();
+
+    return [
+        'id' => $this->getId(),
+        'nom' => $this->getNom(),
+        'categ' => $this->getCateg(),
+        'label' => $this->getLabel(),
+        'cover' => $this->getCover(),
+        'year' => $this->getYear(),
+        'createdAt' => $this->getCreatedAt()->format('Y-m-d H:i:s'),
+        'songs' => $songs
+    ];
+}
 }
