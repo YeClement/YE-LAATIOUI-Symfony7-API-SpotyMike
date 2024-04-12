@@ -7,7 +7,6 @@ use DateTimeImmutable;
 use App\Service\TokenVerifierService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,36 +22,72 @@ class UserController extends AbstractController
         $this->entityManager = $entityManager;
         $this->tokenVerifierService = $tokenVerifierService;
     }
-
     #[Route('/user', name: 'user_post', methods: ['POST'])]
     public function create(Request $request, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-
-        if (!isset($data['firstname'], $data['lastname'], $data['email'], $data['tel'], $data['sexe'], $data['dateBirth'])) {
-            return $this->json(['message' => 'Missing required fields.'], JsonResponse::HTTP_BAD_REQUEST);
+    
+        $requiredFields = ['email', 'password', 'dateBirth'];
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Les données fournies sont invalides ou incomplètes.'
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
         }
-
+    
+        if (isset($data['tel']) && !preg_match("/^[0-9]{10}$/", $data['tel'])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Le format du numéro de téléphone est invalide.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        if (isset($data['sexe']) && !in_array($data['sexe'], [0, 1])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour une Femme, 1 pour Homme.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        $existingUser = $this->entityManager->getRepository(User::class)->findOneBy(['tel' => $data['tel']]);
+        if ($existingUser) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Conflit dans les données. Le numéro est déjà utilisé par un autre utilisateur.'
+            ], JsonResponse::HTTP_CONFLICT);
+        }
+    
+        if (!$this->getUser()) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Authentification requise.Vous devez être connecté pour effectuer cette action.'
+            ], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+    
         $user = new User();
-        $user->setFirstname($data['firstname']);
-        $user->setLastname($data['lastname']);
-        $user->setEmail($data['email']);
-        $user->setTel($data['tel']);
-        $user->setSexe((bool) $data['sexe']);
+        $user->setFirstname($data['firstname'] ?? '');
+        $user->setLastname($data['lastname'] ?? '');
+        $user->setEmail($data['email'] ?? '');
+        $user->setTel(isset($data['tel']) ? $data['tel'] : null);
+        $user->setSexe(isset($data['sexe']) ? (bool) $data['sexe'] : null);
         $user->setDateBirth(new DateTimeImmutable($data['dateBirth']));
         $user->setCreatedAt(new DateTimeImmutable());
         $user->setUpdatedAt(new DateTimeImmutable());
-
-        if (!empty($data['password'])) {
-            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
-            $user->setPassword($hashedPassword);
-        }
-
+    
+        $hash = !empty($data['password']) ? $passwordHasher->hashPassword($user, $data['password']) : $passwordHasher->hashPassword($user, 'defaultPassword');
+        $user->setPassword($hash);
+    
         $this->entityManager->persist($user);
         $this->entityManager->flush();
-
-        return $this->json(['message' => 'User created successfully'], JsonResponse::HTTP_CREATED);
+    
+        return $this->json([
+            'error' => false,
+            'message' => 'Votre inscription a bien été prise en compte.',
+        ], JsonResponse::HTTP_CREATED);
     }
+    
 
     #[Route('/user/{id}', name: 'user_update', methods: ['PUT'])]
     public function update(Request $request, UserPasswordHasherInterface $passwordHasher, int $id): JsonResponse
