@@ -41,7 +41,7 @@ class SongController extends AbstractController
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
     
-        $album = null; // Initialize $album to null
+        $album = null; 
         if (isset($data['albumId'])) {
             $album = $this->entityManager->getRepository(Album::class)->find($data['albumId']);
             if (!$album) {
@@ -56,7 +56,7 @@ class SongController extends AbstractController
             $song->setTitle($data['title']);
             $song->setCover($data['cover']);
             $song->setCreatedAt(new \DateTimeImmutable());
-            if ($album) { // Only associate if $album is not null
+            if ($album) { 
                 $song->setAlbum($album);
             }
     
@@ -66,7 +66,7 @@ class SongController extends AbstractController
             return $this->json([
                 'message' => 'Song created successfully.',
                 'songId' => $song->getId(),
-                'albumId' => $album ? $album->getId() : null // Optionally return album ID
+                'albumId' => $album ? $album->getId() : null 
             ], JsonResponse::HTTP_CREATED);
         } catch (\Exception $e) {
             return $this->json([

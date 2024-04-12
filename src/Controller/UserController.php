@@ -68,6 +68,8 @@ class UserController extends AbstractController
         }
     
         $user = new User();
+
+
         $user->setFirstname($data['firstname'] ?? '');
         $user->setLastname($data['lastname'] ?? '');
         $user->setEmail($data['email'] ?? '');
@@ -80,6 +82,7 @@ class UserController extends AbstractController
         $hash = !empty($data['password']) ? $passwordHasher->hashPassword($user, $data['password']) : $passwordHasher->hashPassword($user, 'defaultPassword');
         $user->setPassword($hash);
     
+
         $this->entityManager->persist($user);
         $this->entityManager->flush();
     

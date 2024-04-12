@@ -20,9 +20,6 @@ class Artist
     #[ORM\OneToOne(inversedBy: 'artist', targetEntity: User::class, cascade: ['persist', 'remove'])]
      private ?User $user = null;
 
-     
-
-
     #[ORM\Column(length: 90)]
     private ?string $fullname = null;
 
@@ -31,6 +28,9 @@ class Artist
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
+
+    /*#[ORM\Column]
+    private ?bool $isactivated = true;*/
 
 
     #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Album::class, cascade: ['persist', 'remove'])]
@@ -91,6 +91,16 @@ class Artist
         $this->description = $description;
         return $this;
     }
+    /*public function getIsActivated(): ?bool
+    {
+        return $this->isActivated;
+    }
+
+    public function setIsActivated(bool $isActivated): self
+    {
+        $this->isActivated = $isActivated;
+        return $this;
+    }*/
 
     
     /**
