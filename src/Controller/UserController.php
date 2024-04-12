@@ -22,6 +22,7 @@ class UserController extends AbstractController
         $this->entityManager = $entityManager;
         $this->tokenVerifierService = $tokenVerifierService;
     }
+
     #[Route('/user', name: 'user_post', methods: ['POST'])]
     public function create(Request $request, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
@@ -87,7 +88,6 @@ class UserController extends AbstractController
             'message' => 'Votre inscription a bien été prise en compte.',
         ], JsonResponse::HTTP_CREATED);
     }
-    
 
     #[Route('/user/{id}', name: 'user_update', methods: ['PUT'])]
     public function update(Request $request, UserPasswordHasherInterface $passwordHasher, int $id): JsonResponse
@@ -145,15 +145,15 @@ class UserController extends AbstractController
     }
 
     #[Route('/user', name: 'user_get_all', methods: ['GET'])]
-public function readAll(): JsonResponse
-{
-    $users = $this->entityManager->getRepository(User::class)->findAll();
-    $data = array_map(function ($user) {
-        return $user->serializer();
-    }, $users);
+    public function readAll(): JsonResponse
+    {
+        $users = $this->entityManager->getRepository(User::class)->findAll();
+        $data = array_map(function ($user) {
+            return $user->serializer();
+        }, $users);
 
-    return new JsonResponse(['data' => $data, 'message' => 'Successful'], JsonResponse::HTTP_OK);
-}
+        return new JsonResponse(['data' => $data, 'message' => 'Successful'], JsonResponse::HTTP_OK);
+    }
 
     #[Route('/user-info', name: 'get_user_info_from_token', methods: ['GET'])]
     public function getUserInfoFromToken(Request $request): JsonResponse
@@ -165,5 +165,43 @@ public function readAll(): JsonResponse
         }
 
         return $this->json($user->serializer());
+    }
+
+    #[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
+    public function passwordLost(Request $request): JsonResponse
+    {
+        $requestData = json_decode($request->getContent(), true);
+
+        if (!isset($requestData['email'])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Email manquant. Veuillez fournir votre email pour la récupération du mot de passe.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $email = $requestData['email'];
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+
+        if (!$user) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Aucun compte n\'est associé à cet email. Veuillez vérifier et réessayer.'
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        // Rate limite à faire
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Un email de réinitialisation de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l\'email pour réinitialiser votre mot de passe.'
+        ], JsonResponse::HTTP_OK);
     }
 }
