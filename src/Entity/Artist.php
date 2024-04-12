@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ArtistRepository::class)]
 class Artist
@@ -16,9 +17,11 @@ class Artist
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\OneToOne(inversedBy: 'artist', cascade: ['remove'])]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?User $User_idUser = null;
+    #[ORM\OneToOne(inversedBy: 'artist', targetEntity: User::class, cascade: ['persist', 'remove'])]
+     private ?User $user = null;
+
+     
+
 
     #[ORM\Column(length: 90)]
     private ?string $fullname = null;
@@ -29,21 +32,14 @@ class Artist
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'Artist_idUser')]
-    private Collection $songs;
 
-    #[ORM\OneToMany(targetEntity: Album::class, mappedBy: 'artist_User_idUser')]
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Album::class, cascade: ['persist', 'remove'])]
     private Collection $albums;
 
-    #[ORM\ManyToOne(inversedBy: 'relation')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Label $artistlabel = null;
-
-    
 
     public function __construct()
     {
-        $this->songs = new ArrayCollection();
+   
         $this->albums = new ArrayCollection();
     }
 
@@ -52,15 +48,14 @@ class Artist
         return $this->id;
     }
 
-    public function getUserIdUser(): ?User
+    public function getUser(): ?User
     {
-        return $this->User_idUser;
+        return $this->user;
     }
 
-    public function setUserIdUser(User $User_idUser): static
+    public function setUser(?User $user): self
     {
-        $this->User_idUser = $User_idUser;
-
+        $this->user = $user;
         return $this;
     }
 
@@ -69,10 +64,9 @@ class Artist
         return $this->fullname;
     }
 
-    public function setFullname(string $fullname): static
+    public function setFullname(string $fullname): self
     {
         $this->fullname = $fullname;
-
         return $this;
     }
 
@@ -81,10 +75,9 @@ class Artist
         return $this->label;
     }
 
-    public function setLabel(string $label): static
+    public function setLabel(string $label): self
     {
         $this->label = $label;
-
         return $this;
     }
 
@@ -93,40 +86,13 @@ class Artist
         return $this->description;
     }
 
-    public function setDescription(?string $description): static
+    public function setDescription(?string $description): self
     {
         $this->description = $description;
-
         return $this;
     }
 
-    /**
-     * @return Collection<int, Song>
-     */
-    public function getSongs(): Collection
-    {
-        return $this->songs;
-    }
-
-    public function addSong(Song $song): static
-    {
-        if (!$this->songs->contains($song)) {
-            $this->songs->add($song);
-            $song->addArtistIdUser($this);
-        }
-
-        return $this;
-    }
-
-    public function removeSong(Song $song): static
-    {
-        if ($this->songs->removeElement($song)) {
-            $song->removeArtistIdUser($this);
-        }
-
-        return $this;
-    }
-
+    
     /**
      * @return Collection<int, Album>
      */
@@ -135,50 +101,46 @@ class Artist
         return $this->albums;
     }
 
-    public function addAlbum(Album $album): static
+    public function addAlbum(Album $album): self
     {
         if (!$this->albums->contains($album)) {
             $this->albums->add($album);
             $album->setArtistUserIdUser($this);
         }
-
         return $this;
     }
 
-    public function removeAlbum(Album $album): static
+    public function removeAlbum(Album $album): self
     {
         if ($this->albums->removeElement($album)) {
             if ($album->getArtistUserIdUser() === $this) {
                 $album->setArtistUserIdUser(null);
             }
         }
-
         return $this;
     }
 
-    public function serializer($children = false)
-    {
-        return [
-            "id" => $this->getId(),
-            "idUser" => ($children) ? $this->getUserIdUser() : null,
-            "fullname" => $this->getFullname(),
-            "label" => $this->getLabel(),
-            "description" => $this->getDescription(),
-            "songs" => $this->getSongs()
-        ];
-    }
+    public function serializer(): array
+{
+    $user = $this->getUser();
+    $userData = $user ? [
+        'firstname' => $user->getFirstname(),
+        'lastname' => $user->getLastname(),
+        'sexe' => $user->getSexe(),
+        'dateBirth' => $user->getDateBirth()->format('Y-m-d'), 
+    ] : null;
 
-    public function getArtistlabel(): ?Label
-    {
-        return $this->artistlabel;
-    }
+    return [
+        'id' => $this->getId(),
+        'fullname' => $this->getFullname(),
+        'label' => $this->getLabel(),
+        'description' => $this->getDescription(),
+        'user' => $userData,
+        'albums' => $this->getAlbums()->map(function ($album) {
+            return $album->serializer();
+        })->toArray(),
+       
+    ];
+}
 
-    public function setArtistlabel(?Label $artistlabel): static
-    {
-        $this->artistlabel = $artistlabel;
-
-        return $this;
-    }
-
-    
 }

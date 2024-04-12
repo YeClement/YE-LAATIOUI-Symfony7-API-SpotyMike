@@ -12,33 +12,42 @@ class Album
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(length: 90)]
-    private ?string $idAlbum = null;
-
-    #[ORM\Column(length: 90)]
+    #[ORM\Column(type: 'string', length: 90)]
     private ?string $nom = null;
 
-    #[ORM\Column(length: 20)]
+    #[ORM\Column(type: 'string', length: 20)]
     private ?string $categ = null;
 
-    #[ORM\Column(length: 125)]
+    #[ORM\Column(type: 'string', length: 20)]
+    private ?string $label = null;
+
+    #[ORM\Column(type: 'string', length: 125)]
     private ?string $cover = null;
 
-    #[ORM\Column]
-    private ?int $year = 2024;
+    #[ORM\Column(type: 'string')]
+    private ?int $year = null;
 
-    #[ORM\ManyToOne(inversedBy: 'albums')]
-    private ?Artist $artist_User_idUser = null;
+    #[ORM\ManyToOne(targetEntity: Artist::class, inversedBy: 'albums')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Artist $artist;
 
-    #[ORM\OneToMany(targetEntity: Song::class, mappedBy: 'album')]
-    private Collection $song_idSong;
+
+    #[ORM\OneToMany(mappedBy: 'album', targetEntity: Song::class)]
+    private Collection $songs;
+
+    
+
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private ?\DateTimeImmutable $createdAt;
 
     public function __construct()
     {
-        $this->song_idSong = new ArrayCollection();
+        $this->songs = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable(); 
     }
 
     public function getId(): ?int
@@ -46,27 +55,14 @@ class Album
         return $this->id;
     }
 
-    public function getIdAlbum(): ?string
-    {
-        return $this->idAlbum;
-    }
-
-    public function setIdAlbum(string $idAlbum): static
-    {
-        $this->idAlbum = $idAlbum;
-
-        return $this;
-    }
-
     public function getNom(): ?string
     {
         return $this->nom;
     }
 
-    public function setNom(string $nom): static
+    public function setNom(string $nom): self
     {
         $this->nom = $nom;
-
         return $this;
     }
 
@@ -75,22 +71,30 @@ class Album
         return $this->categ;
     }
 
-    public function setCateg(string $categ): static
+    public function setCateg(string $categ): self
     {
         $this->categ = $categ;
-
         return $this;
     }
 
+    public function getLabel(): ?string
+    {
+        return $this->label;
+    }
+
+    public function setLabel(string $label): self
+    {
+        $this->label = $label;
+        return $this;
+    }
     public function getCover(): ?string
     {
         return $this->cover;
     }
 
-    public function setCover(string $cover): static
+    public function setCover(string $cover): self
     {
         $this->cover = $cover;
-
         return $this;
     }
 
@@ -99,52 +103,79 @@ class Album
         return $this->year;
     }
 
-    public function setYear(int $year): static
+    public function setYear(string $year): self
     {
         $this->year = $year;
-
         return $this;
     }
 
-    public function getArtistUserIdUser(): ?Artist
+    public function getArtist(): ?Artist
     {
-        return $this->artist_User_idUser;
+        return $this->artist;
     }
 
-    public function setArtistUserIdUser(?Artist $artist_User_idUser): static
+    public function setArtist(?Artist $artist): self
     {
-        $this->artist_User_idUser = $artist_User_idUser;
-
+        $this->artist = $artist;
         return $this;
     }
 
     /**
      * @return Collection<int, Song>
      */
-    public function getSongIdSong(): Collection
+    public function getSongs(): Collection
     {
-        return $this->song_idSong;
+        return $this->songs;
     }
 
-    public function addSongIdSong(Song $songIdSong): static
+    public function addSong(Song $song): self
     {
-        if (!$this->song_idSong->contains($songIdSong)) {
-            $this->song_idSong->add($songIdSong);
-            $songIdSong->setAlbum($this);
+        if (!$this->songs->contains($song)) {
+            $this->songs->add($song);
+            $song->setAlbum($this);
         }
 
         return $this;
     }
 
-    public function removeSongIdSong(Song $songIdSong): static
+    public function removeSong(Song $song): self
     {
-        if ($this->song_idSong->removeElement($songIdSong)) {
-            // set the owning side to null (unless already changed)
-            if ($songIdSong->getAlbum() === $this) {
-                $songIdSong->setAlbum(null);
+        if ($this->songs->removeElement($song)) {
+
+            if ($song->getAlbum() === $this) {
+                $song->setAlbum(null);
             }
         }
 
         return $this;
     }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function serializer(): array
+{
+    $songs = $this->songs->map(function (Song $song) {
+        return $song->serializer();
+    })->toArray();
+
+    return [
+        'id' => $this->getId(),
+        'nom' => $this->getNom(),
+        'categ' => $this->getCateg(),
+        'label' => $this->getLabel(),
+        'cover' => $this->getCover(),
+        'year' => $this->getYear(),
+        'createdAt' => $this->getCreatedAt()->format('Y-m-d H:i:s'),
+        'songs' => $songs
+    ];
+}
 }
