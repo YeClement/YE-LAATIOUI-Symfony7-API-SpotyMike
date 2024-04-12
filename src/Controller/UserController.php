@@ -240,4 +240,29 @@ class UserController extends AbstractController
             'message' => 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.'
         ], JsonResponse::HTTP_OK);
     }
+    #[Route('/account-deactivation', name: 'account_deactivation', methods: ['DELETE'])]
+    public function deactivateAccount(Request $request): JsonResponse
+    {
+        //à finir
+        
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
+            ], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+    
+        if ($user->isDeactivated()) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Le compte est déjà désactivé.'
+            ], JsonResponse::HTTP_CONFLICT);
+        }
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Votre compte a été désactivé avec succès. Nous sommes désolés de vous voir partir.'
+        ], JsonResponse::HTTP_OK);
+    }
 }
