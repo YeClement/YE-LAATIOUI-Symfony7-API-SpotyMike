@@ -27,69 +27,7 @@ class ArtistController extends AbstractController
         $this->tokenStorage = $tokenStorage;
     }
 
-    #[Route('/artist', name: 'artist_create', methods: 'POST')]
-    public function create(Request $request): JsonResponse
-    {
-        $token = $this->tokenStorage->getToken();
-        $user = $token ? $token->getUser() : null;
-
-        
-        
-    if (!$user instanceof UserInterface) {
-        return $this->json(['message' => 'Authentication requise . Vous devez etre connecté pour effectuer cette action'], JsonResponse::HTTP_FORBIDDEN);
-    }
-
-    
-    $dateOfBirth = $user->getDateBirth();
-    $today = new \DateTimeImmutable();
-    $age = $today->diff($dateOfBirth)->y;
-
-    if ($age < 16) {
-        return $this->json(['message' => 'Vous devez avoir au moins 16 ans pour être artiste'], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    
-    if ($user->getArtist()) {
-        return $this->json(['message' => 'Un utilisateur ne peut gérer qu’un seul compte existant pour créer un nouveau'], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    $data = json_decode($request->getContent(), true);
-
-    if (!isset($data['fullname'], $data['label']) || !is_array($data)) {
-        return $this->json(['message' => 'L\'id du label et le fullname sont obligatoires'], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    if ($this->entityManager->getRepository(Artist::class)->findOneBy(['fullname' => $data['fullname']])) {
-        return $this->json(['message' => 'Ce nom d\'artiste est déjà pris, veuillez choisir un autre'], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    //TO CHANGE AFTER
-    if (strlen($data['label']) > 3) {
-        return $this->json(['message' => 'Le label ne respecte pas le format attendu'], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-
-        try {
-            $artist = new Artist();
-            $artist->setUser($user);
-            $artist->setFullname($data['fullname']);
-            $artist->setLabel($data['label']);
-            $artist->setDescription($data['description'] ?? '');
-
-            $this->entityManager->persist($artist);
-            $this->entityManager->flush();
-
-            return $this->json([
-                'message' => "Votre compte d'artiste a été créé avec succès. Bienvenue dans notre communauté d'artistes !",
-                'artist_id' => $artist->getId(),
-            ], JsonResponse::HTTP_CREATED);
-        } catch (\Exception $e) {
-            return $this->json([
-                'message' => 'An error occurred while creating the artist account.',
-                'error' => $e->getMessage(), 
-            ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
+   
 
 
 
@@ -99,7 +37,7 @@ class ArtistController extends AbstractController
         $artist = $this->artistRepository->find($id);
 
         if (!$artist) {
-            return new JsonResponse(['error' => 'Artist not found'], JsonResponse::HTTP_NOT_FOUND);
+            return new JsonResponse(['error' => 'Artiste'], JsonResponse::HTTP_NOT_FOUND);
         }
 
         $this->entityManager->remove($artist);
@@ -121,11 +59,11 @@ class ArtistController extends AbstractController
                 }
                 return new JsonResponse([
                     'data' => $result,
-                    'message' => 'Successful'
+                    'message' => 'Succes'
                 ], JsonResponse::HTTP_OK);
             }
             return new JsonResponse([
-                'message' => 'No artists found'
+                'message' => 'Artiste non trouve'
             ], JsonResponse::HTTP_NOT_FOUND);
         } catch (\Exception $exception) {
             return new JsonResponse([
@@ -134,33 +72,125 @@ class ArtistController extends AbstractController
         }
     }
 
-    #[Route('/artist/{id}', name: 'artist_update', methods: ['POST'])]
-public function updateArtist(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
-{
-    $artist = $entityManager->getRepository(Artist::class)->find($id);
-    if (!$artist) {
-        return $this->json(['message' => 'Artist not found'], JsonResponse::HTTP_NOT_FOUND);
+    #[Route('/artist', name: 'artist_handle', methods: ['POST'])]
+    public function handleArtist(Request $request, EntityManagerInterface $entityManager, TokenStorageInterface $tokenStorage): JsonResponse
+    {
+        $token = $tokenStorage->getToken();
+        $user = $token ? $token->getUser() : null;
+    
+        if (!$user instanceof UserInterface) {
+            return $this->json(['message' => 'Authentication requise. Vous devez être connecté pour effectuer cette action'], JsonResponse::HTTP_FORBIDDEN);
+        }
+    
+    
+        $fullname = $request->request->get('fullname');
+        $label = $request->request->get('label');
+        $description = $request->request->get('description');
+    
+        if (empty($fullname) || empty($label)) {
+            return $this->json([
+                'message' => 'Missing required fields.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+       
+        $artist = $user->getArtist();
+    
+        if ($artist) {
+            $data = [
+                'fullname' => $fullname,
+                'label' => $label,
+                'description' => $description
+            ];
+            return $this->updateArtist($data, $artist, $entityManager);
+        } else {
+            $data = [
+                'fullname' => $fullname,
+                'label' => $label,
+                'description' => $description
+            ];
+            return $this->createArtist($data, $user, $entityManager);
+        }
     }
-
-    $data = json_decode($request->getContent(), true);
-    if (!isset($data['fullname'], $data['label'], $data['description'])) {
-        return $this->json(['message' => 'Missing required fields'], JsonResponse::HTTP_BAD_REQUEST);
+    
+    private function createArtist(array $data, UserInterface $user, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $dateOfBirth = $user->getDateBirth();
+        $today = new \DateTimeImmutable();
+        $age = $today->diff($dateOfBirth)->y;
+    
+        if ($age < 16) {
+            return $this->json(['message' => 'Vous devez avoir au moins 16 ans pour être artiste'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        if (empty($data['fullname']) || empty($data['label'])) {
+            return $this->json(['message' => 'Les champs fullname et label sont obligatoires'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        if (strlen($data['label']) > 33) {
+            return $this->json(['message' => 'Le label dépasse la longueur autorisée de 33 caractères'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        if (!preg_match('/^[a-zA-ZÀ-ÿ \'-]+$/u', $data['fullname'])) {
+            return $this->json(['message' => 'Le format du nom d\'artiste fourni est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        $existingArtist = $entityManager->getRepository(Artist::class)->findOneBy(['fullname' => $data['fullname']]);
+        if ($existingArtist) {
+            return $this->json(['message' => 'Ce nom d\'artiste est déjà utilisé, veuillez choisir un autre'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        $artist = new Artist();
+        $artist->setUser($user);
+        $artist->setFullname($data['fullname']);
+        $artist->setLabel($data['label']);
+        $artist->setDescription($data['description'] ?? '');
+    
+        $entityManager->persist($artist);
+        $entityManager->flush();
+    
+        return $this->json([
+            'message' => "Votre compte d'artiste a été créé avec succès.",
+            'artist_id' => $artist->getId(),
+        ], JsonResponse::HTTP_CREATED);
     }
+    
+    private function updateArtist(array $data, Artist $artist, EntityManagerInterface $entityManager): JsonResponse
+    {
+        // Check for missing fields
+        if (empty($data['fullname']) || empty($data['label']) || empty($data['description'])) {
+            return $this->json(['message' => 'Les données nécessaires à la mise à jour sont manquantes'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        // Validate the format of the fullname
+        if (!preg_match('/^[a-zA-ZÀ-ÿ \'-]+$/u', $data['fullname'])) {
+            return $this->json(['message' => 'Le format du nom d\'artiste fourni est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        // Check if the fullname is already used by another artist (excluding the current artist)
+        $existingArtist = $entityManager->getRepository(Artist::class)->findOneBy(['fullname' => $data['fullname']]);
+        if ($existingArtist && $existingArtist->getId() !== $artist->getId()) {
+            return $this->json(['message' => 'Le nom d\'artiste est déjà utilisé'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    
+        // Update the artist details
+        $artist->setFullname($data['fullname']);
+        $artist->setLabel($data['label']);
+        $artist->setDescription($data['description']);
+    
+        // Persist the changes to the database
+        $entityManager->persist($artist);
+        $entityManager->flush();
+    
+        // Return a successful response with the artist data
+        return $this->json([
+            'message' => 'Artist updated successfully',
+            'artist' => $artist->serializer()
+        ], JsonResponse::HTTP_OK);
+    }
+    
 
-    $artist->setFullname($data['fullname']);
-    $artist->setLabel($data['label']);
-    $artist->setDescription($data['description']);
-
-    $entityManager->persist($artist);
-    $entityManager->flush();
-
-    return $this->json([
-        'message' => 'Artist updated successfully',
-        'artist' => $artist->serializer()  // Assuming serializer() method exists to format the response
-    ], JsonResponse::HTTP_OK);
-}
-
-#[Route('/artist/{id}', name: 'artist_get_by_id', methods: ['GET'])]
+    #[Route('/artist/{id}', name: 'artist_get_by_id', methods: ['GET'])]
 public function getArtistById(int $id, Request $request, ArtistRepository $artistRepository): JsonResponse
 {
     
@@ -200,4 +230,8 @@ public function getArtistById(int $id, Request $request, ArtistRepository $artis
         'message' => 'Artist retrieved successfully'
     ], JsonResponse::HTTP_OK);
 }
-}
+
+
+
+
+}    

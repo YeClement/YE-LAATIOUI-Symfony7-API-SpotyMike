@@ -30,6 +30,7 @@ class User implements UserInterface
     #[ORM\Column]
     private ?bool $sexe = null;
 
+
     #[ORM\Column(type: "datetime_immutable")]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -95,14 +96,14 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getSexe(): ?bool
+    public function getSexe(): string
     {
-        return $this->sexe;
+        return $this->sexe ? 'homme' : 'femme';
     }
 
-    public function setSexe(bool $sexe): self
+    public function setSexeHommeFemme(string $sexe): self
     {
-        $this->sexe = $sexe;
+        $this->sexe = $sexe === 'homme';
         return $this;
     }
 
@@ -199,7 +200,7 @@ class User implements UserInterface
     
     public function __construct() {
         $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable(); // Correct initialization
+        $this->updatedAt = new \DateTimeImmutable(); 
     }
     
     

@@ -38,7 +38,6 @@ class UserController extends AbstractController
         $user->setLastname($data['lastname']);
         $user->setEmail($data['email']);
         $user->setTel($data['tel']);
-        $user->setSexe((bool) $data['sexe']);
         $user->setDateBirth(new DateTimeImmutable($data['dateBirth']));
         $user->setCreatedAt(new DateTimeImmutable());
         $user->setUpdatedAt(new DateTimeImmutable());
@@ -46,7 +45,7 @@ class UserController extends AbstractController
         if (!empty($data['password'])) {
             $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
             $user->setPassword($hashedPassword);
-        }
+        } 
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
