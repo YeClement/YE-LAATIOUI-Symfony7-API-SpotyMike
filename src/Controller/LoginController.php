@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use DateTimeImmutable;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,47 +32,44 @@ class LoginController extends AbstractController
         return new JsonResponse($content);
     }
 
-    #[Route('/login', name: 'app_login_post', methods: ['POST'])]
-    public function login(Request $request, JWTTokenManagerInterface $JWTManager, UserPasswordHasherInterface $passwordHash): JsonResponse
+    #[Route('/login', name: 'login', methods: ['POST'])]
+    public function login(Request $request, UserPasswordHasherInterface $passwordHasher, JWTTokenManagerInterface $JWTManager, UserRepository $userRepository): JsonResponse
     {
         $email = $request->request->get('email');
         $password = $request->request->get('password');
-    
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Le format de l\'email est invalide'
-            ], JsonResponse::HTTP_BAD_REQUEST);
-        }
-    
-        $passwordRequirements = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';
-        if (!preg_match($passwordRequirements, $password)) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum'
-            ], JsonResponse::HTTP_BAD_REQUEST);
-        }
-    
-        $user = $this->repository->findOneBy(["email" => $email]);
-    
-        if (!$user || !$passwordHash->isPasswordValid($user, $password)) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Email/password incorrect'
-            ], JsonResponse::HTTP_UNAUTHORIZED);
-        }
-    
-        if (!$user->isActive() || $user->isSuspended()) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Le compte n\'est plus actif ou est suspendu'
-            ], JsonResponse::HTTP_FORBIDDEN);
-        }
-    
-            //rate limiting à faire
-    
-        $token = $JWTManager->create($user);
+        $data =$request->request->all();
 
+        $user = $this->repository->findOneBy(["email" => $email]);
+        if (!$user) {
+            return new JsonResponse(['error' => true, 'message' => 'email incorrect'], JsonResponse::HTTP_NOT_FOUND);
+            
+        }
+
+        // donnée manquante
+        if (!isset($data['email']) || !isset($data['password'])) {
+            return new JsonResponse(['error' => true, 'message' => 'Email/Password manquants.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // email format non valide
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        return new JsonResponse(['error' => true, 'message' => 'Le format de l\'email est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $passwordRequirements = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/';
+        if (!preg_match($passwordRequirements, $data['password'])) {
+            return new JsonResponse(['error' => true, 'message' => 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+       
+       
+        if (!$passwordHasher->isPasswordValid($user, $data['password'])) {
+            return new JsonResponse(['error' =>true, 'message' => 'Le mot de passe incorrect.'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+        if (!$user->getActive()) {
+            return new JsonResponse(['error' => true, 'message' => 'Le compte n\'est plus actif ou est suspendu.'], JsonResponse::HTTP_FORBIDDEN);
+        }
+        
+        $token = $JWTManager->create($user);
         return $this->json([
             'error' => true,
             'message' => 'L\'utilisateur a été authentifié avec succès',
@@ -79,11 +77,14 @@ class LoginController extends AbstractController
             'token' => $token
         ]);
     }
-    
+
+
     #[Route('/register', name: 'app_create_user', methods: ['POST'])]
     public function createUser(Request $request, UserPasswordHasherInterface $passwordHash): JsonResponse
     {
         $requestData = $request->request->all();
+        $sexe = $request->request->get('sexe');
+        $tel = $request->request->get('tel');
     
         $requiredFields = ['firstname', 'lastname', 'email', 'password', 'dateBirth'];
     
@@ -99,6 +100,8 @@ class LoginController extends AbstractController
         $email = $requestData['email'];
         $password = $requestData['password'];
         $dateBirth = $requestData['dateBirth'];
+        //$sexe = $requestData['sexe'];
+        //$tel = $requestData['tel'];
     
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->json([
@@ -138,6 +141,20 @@ class LoginController extends AbstractController
                 'message' => 'Cet email est déjà utilisé par un autre compte',
             ], JsonResponse::HTTP_CONFLICT);
         }
+        //Convertir le type en int pour permettre des comparaisons avec d'autres valeurs int
+        $sexe = (int) $sexe;
+        
+        if ($sexe !== null && $sexe !== 0 && $sexe !== 1) {
+            return $this->json([
+                'error' => true,
+                'message' => 'sexe format est invalide',
+            ], JsonResponse::HTTP_CONFLICT);
+        }
+
+       
+        if ($tel && !preg_match('/^\d{10}$/', $requestData['tel'])) {
+            return new JsonResponse(['error' => true, 'message' => 'Le format du numéro de téléphone est invalide'], JsonResponse::HTTP_BAD_REQUEST);
+        }
     
         $user = new User();
         $hash = $passwordHash->hashPassword($user, $password);
@@ -145,7 +162,11 @@ class LoginController extends AbstractController
             ->setLastname($requestData['lastname'])
             ->setEmail($email)
             ->setPassword($hash)
-            ->setDateBirth($dateBirthFormat);
+            ->setDateBirth($dateBirthFormat)
+            ->setSexe($sexe)
+            ->setTel($tel);
+
+
     
         $this->entityManager->persist($user);
         $this->entityManager->flush();

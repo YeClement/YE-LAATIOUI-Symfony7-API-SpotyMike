@@ -136,7 +136,7 @@ class Artist
     $userData = $user ? [
         'firstname' => $user->getFirstname(),
         'lastname' => $user->getLastname(),
-        'sexe' => $user->getSexe(),
+        'sexe' => $user->getSexe() ? "Homme" : "Femme",
         'dateBirth' => $user->getDateBirth()->format('Y-m-d'), 
     ] : null;
 

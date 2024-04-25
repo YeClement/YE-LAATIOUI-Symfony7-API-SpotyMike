@@ -21,19 +21,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 55)]
     private ?string $lastname = null;
 
-    #[ORM\Column(length: 80, unique: true)]
+    #[ORM\Column(length: 80, unique: true , nullable: true)]
     private ?string $email = null;
 
     #[ORM\Column(length: 15, nullable: true)]
     private ?string $tel = null;
 
-    #[ORM\Column]
+    #[ORM\Column(length: 1, nullable: true)]
     private ?bool $sexe = null;
 
+    #[ORM\Column(length: 10)]
+    private $active = true;
 
     #[ORM\Column(length: 255)]
     private ?string $password = null;
-
 
     #[ORM\Column(type: "datetime_immutable")]
     private ?\DateTimeImmutable $createdAt = null;
@@ -96,14 +97,26 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getSexe(): string
+    public function getSexe(): ?bool
     {
-        return $this->sexe ? 'homme' : 'femme';
+        return $this->sexe ;
     }
 
-    public function setSexeHommeFemme(string $sexe): self
+    public function setSexe(bool $sexe): self
     {
-        $this->sexe = $sexe === 'homme';
+        $this->sexe = $sexe;
+        return $this;
+    }
+
+
+    public function getActive(): ?bool
+    {
+        return $this->active ;
+    }
+
+    public function setActive(bool $active): self
+    {
+        $this->active = $active;
         return $this;
     }
 
@@ -190,7 +203,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             "lastname" => $this->getLastname(),
             "email" => $this->getEmail(),
             "tel" => $this->getTel(),
-            "sexe" => $this->getSexe(),
+            "sexe" => $this->getSexe() ? "Homme" : "Femme",
             "dateBirth" => $this->getDateBirth() ? $this->getDateBirth()->format('Y-m-d') : null,
             "createdAt" => $this->getCreatedAt()->format('c'),
             "updatedAt" => $this->getUpdatedAt()->format('c'),
