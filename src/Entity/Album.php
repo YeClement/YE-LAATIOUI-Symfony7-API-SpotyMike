@@ -48,6 +48,10 @@ class Album
     {
         $this->songs = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable(); 
+       
+            
+    
+        
     }
 
     public function getId(): ?int
@@ -162,10 +166,7 @@ class Album
     }
 
     public function serializer(): array
-{
-    $songs = $this->songs->map(function (Song $song) {
-        return $song->serializer();
-    })->toArray();
+        {
 
     return [
         'id' => $this->getId(),
@@ -175,7 +176,9 @@ class Album
         'cover' => $this->getCover(),
         'year' => $this->getYear(),
         'createdAt' => $this->getCreatedAt()->format('Y-m-d H:i:s'),
-        'songs' => $songs
-    ];
-}
+        "songs" => $this->getSong() ? $this->getSong()->serializer() : [],
+        ];
+        }
+
+        
 }

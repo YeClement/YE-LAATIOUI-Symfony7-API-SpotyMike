@@ -40,24 +40,26 @@ class LoginController extends AbstractController
         $data =$request->request->all();
 
         $user = $this->repository->findOneBy(["email" => $email]);
-        if (!$user) {
-            return new JsonResponse(['error' => true, 'message' => 'email incorrect'], JsonResponse::HTTP_NOT_FOUND);
-            
-        }
+       
 
         // donnée manquante
         if (!isset($data['email']) || !isset($data['password'])) {
-            return new JsonResponse(['error' => true, 'message' => 'Email/Password manquants.'], JsonResponse::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => true, 'message' => 'Email/password manquants.'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        // email format non valide
+         //email format non valide 
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-        return new JsonResponse(['error' => true, 'message' => 'Le format de l\'email est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
+        return new JsonResponse(['error' => true, 'message' => 'Le format de l\'emaiOl est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
         }
+        
+        /*$regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
+        if (!preg_match($regex, $email)) {
+            return new JsonResponse(['error' => true, 'message' => 'Le format de l\'email est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
+        }*/
 
         $passwordRequirements = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/';
         if (!preg_match($passwordRequirements, $data['password'])) {
-            return new JsonResponse(['error' => true, 'message' => 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum.'], JsonResponse::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => true, 'message' => 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum.'], JsonResponse::HTTP_FORBIDDEN);
         }
        
        
@@ -68,10 +70,9 @@ class LoginController extends AbstractController
         if (!$user->getActive()) {
             return new JsonResponse(['error' => true, 'message' => 'Le compte n\'est plus actif ou est suspendu.'], JsonResponse::HTTP_FORBIDDEN);
         }
-        
         $token = $JWTManager->create($user);
         return $this->json([
-            'error' => true,
+            'error' => false,
             'message' => 'L\'utilisateur a été authentifié avec succès',
             'user' => $user->serializer(),
             'token' => $token
@@ -92,7 +93,7 @@ class LoginController extends AbstractController
             if (!isset($requestData[$field])) {
                 return $this->json([
                     'error' => true,
-                    'message' => 'Des champs obligatoires sont manquants',
+                    'message' => 'Des champs obligatoires sont manquants.',
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
         }
@@ -102,11 +103,12 @@ class LoginController extends AbstractController
         $dateBirth = $requestData['dateBirth'];
         //$sexe = $requestData['sexe'];
         //$tel = $requestData['tel'];
-    
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        
+        $regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
+        if (!preg_match($regex, $email)) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format de l\'email est invalide',
+                'message' => 'Le format de l\'email est invalide.',
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
     
@@ -122,7 +124,7 @@ class LoginController extends AbstractController
         if (!$dateBirthFormat) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format de la date de naissance est invalide. Le format attendu est JJ/MM/AAAA',
+                'message' => 'Le format de la date de naissance est invalide. Le format attendu est JJ/MM/AAAA.',
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
     
@@ -138,7 +140,7 @@ class LoginController extends AbstractController
         if ($existingUser) {
             return $this->json([
                 'error' => true,
-                'message' => 'Cet email est déjà utilisé par un autre compte',
+                'message' => 'Cet email est déjà utilisé par un autre compte.',
             ], JsonResponse::HTTP_CONFLICT);
         }
         //Convertir le type en int pour permettre des comparaisons avec d'autres valeurs int
@@ -147,13 +149,13 @@ class LoginController extends AbstractController
         if ($sexe !== null && $sexe !== 0 && $sexe !== 1) {
             return $this->json([
                 'error' => true,
-                'message' => 'sexe format est invalide',
-            ], JsonResponse::HTTP_CONFLICT);
+                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+            ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-       
-        if ($tel && !preg_match('/^\d{10}$/', $requestData['tel'])) {
-            return new JsonResponse(['error' => true, 'message' => 'Le format du numéro de téléphone est invalide'], JsonResponse::HTTP_BAD_REQUEST);
+        $tel = $requestData['tel'] ?? '';
+        if ($tel && !preg_match('/^0[1-9][0-9]{8}$/', $requestData['tel'])) {
+            return new JsonResponse(['error' => true, 'message' => 'Le format du numéro de téléphone est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
         }
     
         $user = new User();

@@ -39,7 +39,6 @@ class Artist
 
     public function __construct()
     {
-   
         $this->albums = new ArrayCollection();
     }
 

@@ -88,12 +88,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getTel(): ?string
     {
-        return $this->tel;
+        return $this->tel ?? '';
     }
 
     public function setTel(?string $tel): self
     {
-        $this->tel = $tel;
+        $this->tel = $tel  ;
         return $this;
     }
 
@@ -198,7 +198,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function serializer(): array
     {
         return [
-            "id" => $this->getId(),
+            //"id" => $this->getId(),
             "firstname" => $this->getFirstname(),
             "lastname" => $this->getLastname(),
             "email" => $this->getEmail(),
@@ -206,8 +206,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             "sexe" => $this->getSexe() ? "Homme" : "Femme",
             "dateBirth" => $this->getDateBirth() ? $this->getDateBirth()->format('Y-m-d') : null,
             "createdAt" => $this->getCreatedAt()->format('c'),
-            "updatedAt" => $this->getUpdatedAt()->format('c'),
-            "artist" => $this->getArtist() ? $this->getArtist()->serializer() : null,
+           // "updatedAt" => $this->getUpdatedAt()->format('c'),
+            'artist' => $this->getArtist() ? $this->getArtist()->serializer() : [],
+            
         ];
     }
     
@@ -216,6 +217,7 @@ public function __construct() {
     $this->createdAt = new \DateTimeImmutable();
     $this->updatedAt = new \DateTimeImmutable();
     $this->dateBirth = new \DateTimeImmutable(); 
+   
 }
 
     
