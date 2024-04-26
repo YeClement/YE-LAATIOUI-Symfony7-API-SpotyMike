@@ -34,16 +34,19 @@ class SongController extends AbstractController
             ], JsonResponse::HTTP_FORBIDDEN);
         }
     
-        $data = json_decode($request->getContent(), true);
-        if (!isset($data['title'], $data['cover']) || !is_array($data)) {
+        $title = $request->request->get('title');
+        $cover = $request->request->get('cover');
+        
+        if (!$title || !$cover) {
             return $this->json([
                 'message' => 'Missing required song fields: title, cover.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
-    
-        $album = null; 
-        if (isset($data['albumId'])) {
-            $album = $this->entityManager->getRepository(Album::class)->find($data['albumId']);
+        
+        $albumId = $request->request->get('albumId');
+        $album = null;
+        if ($albumId) {
+            $album = $this->entityManager->getRepository(Album::class)->find($albumId);
             if (!$album) {
                 return $this->json([
                     'message' => 'Album not found.'

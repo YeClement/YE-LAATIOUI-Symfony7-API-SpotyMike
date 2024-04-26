@@ -89,7 +89,7 @@ class Song
             'title' => $this->getTitle(),
             'cover' => $this->getCover(),
             'createdAt' => $this->getCreatedAt()->format('c'), 
-            'album' => $this->getAlbum() ? $this->getAlbum()->getId() : null 
+            'album' => $this->getAlbum() ? $this->getAlbum()->getId() : []
         ];
     }
 }

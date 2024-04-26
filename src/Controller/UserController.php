@@ -11,6 +11,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
 class UserController extends AbstractController
 {
@@ -26,71 +27,88 @@ class UserController extends AbstractController
     #[Route('/user', name: 'user_post', methods: ['POST'])]
     public function create(Request $request, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-    
-        $requiredFields = ['email', 'password', 'dateBirth'];
-        foreach ($requiredFields as $field) {
-            if (!isset($data[$field])) {
-                return $this->json([
-                    'error' => true,
-                    'message' => 'Les données fournies sont invalides ou incomplètes.'
-                ], JsonResponse::HTTP_BAD_REQUEST);
-            }
-        }
-    
-        if (isset($data['tel']) && !preg_match("/^[0-9]{10}$/", $data['tel'])) {
+    // Authentication check
+    if (!$this->getUser()) {
+        return $this->json([
+            'error' => true,
+            'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
+        ], JsonResponse::HTTP_UNAUTHORIZED);
+    }
+
+    $data =$request->request->all();
+
+
+    // Validate only expected fields are provided
+    $validKeys = ['firstname', 'lastname', 'tel', 'sexe'];
+    foreach ($data as $key => $value) {
+        if (!in_array($key, $validKeys)) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format du numéro de téléphone est invalide.'
+                'message' => 'Les données fournies sont invalides ou incomplètes.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
-    
-        if (isset($data['sexe']) && !in_array($data['sexe'], [0, 1])) {
-            return $this->json([
-                'error' => true,
-                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour une Femme, 1 pour Homme.'
-            ], JsonResponse::HTTP_BAD_REQUEST);
-        }
-    
+    }
+
+    // Optional fields check
+    if (isset($data['tel']) && !preg_match("/^[0-9]{10}$/", $data['tel'])) {
+        return $this->json([
+            'error' => true,
+            'message' => 'Le format du numéro de téléphone est invalide.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
+    $sexe = $data['sexe'] ?? null;
+    if ($sexe !== null && $sexe !== '0' && $sexe !== '1')  {
+        return $this->json([
+            'error' => true,
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
+
+    }
+
+    // Check for existing user with the same telephone number
+    if (isset($data['tel'])) {
         $existingUser = $this->entityManager->getRepository(User::class)->findOneBy(['tel' => $data['tel']]);
         if ($existingUser) {
             return $this->json([
                 'error' => true,
-                'message' => 'Conflit dans les données. Le numéro est déjà utilisé par un autre utilisateur.'
+                'message' => 'Conflit de données. Le numéro de téléphone est déjà utilisé par un autre utilisateur.'
             ], JsonResponse::HTTP_CONFLICT);
         }
-    
-        if (!$this->getUser()) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Authentification requise.Vous devez être connecté pour effectuer cette action.'
-            ], JsonResponse::HTTP_UNAUTHORIZED);
-        }
-    
-        $user = new User();
-
-
-        $user->setFirstname($data['firstname'] ?? '');
-        $user->setLastname($data['lastname'] ?? '');
-        $user->setEmail($data['email'] ?? '');
-        $user->setTel(isset($data['tel']) ? $data['tel'] : null);
-        $user->setSexe(isset($data['sexe']) ? (bool) $data['sexe'] : null);
-        $user->setDateBirth(new DateTimeImmutable($data['dateBirth']));
-        $user->setCreatedAt(new DateTimeImmutable());
-        $user->setUpdatedAt(new DateTimeImmutable());
-    
-        $hash = !empty($data['password']) ? $passwordHasher->hashPassword($user, $data['password']) : $passwordHasher->hashPassword($user, 'defaultPassword');
-        $user->setPassword($hash);
-    
-
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
-    
-        return $this->json([
-            'error' => false,
-            'message' => 'Votre inscription a bien été prise en compte.',
-        ], JsonResponse::HTTP_CREATED);
     }
+
+    if (isset($data['firstname']) && (strlen($data['firstname']) < 2 || strlen($data['firstname']) > 50)) {
+        return $this->json([
+            'error' => true,
+            'message' => 'Erreur de validation des données.'
+        ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    if (isset($data['lastname']) && (strlen($data['lastname']) < 2 || strlen($data['lastname']) > 50)) {
+        return $this->json([
+            'error' => true,
+            'message' => 'Erreur de validation des données. Le nom de famille est trop court ou trop long.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    $user = new User();
+
+    // Set optional and provided fields
+    $user->setFirstname($data['firstname'] ?? '');
+    $user->setLastname($data['lastname'] ?? '');
+    $user->setTel($data['tel'] ?? '');
+    $user->setSexe(isset($data['sexe']) ? (int) $data['sexe'] : '');
+
+
+    // Persist and flush user data
+    $this->entityManager->persist($user);
+    $this->entityManager->flush();
+
+    return $this->json([
+        'error' => false,
+        'message' => 'Votre inscription a bien été prise en compte'
+    ], JsonResponse::HTTP_OK);
+}
+
 
     #[Route('/user/{id}', name: 'user_update', methods: ['PUT'])]
     public function update(Request $request, UserPasswordHasherInterface $passwordHasher, int $id): JsonResponse
@@ -103,7 +121,6 @@ class UserController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
-        // Update fields as necessary
         if (isset($data['firstname'])) {
             $user->setFirstname($data['firstname']);
         }
@@ -171,14 +188,14 @@ class UserController extends AbstractController
     }
 
     #[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
-    public function passwordLost(Request $request): JsonResponse
+    public function passwordLost(Request $request , JWTTokenManagerInterface $JWTManager): JsonResponse
     {
-        $requestData = json_decode($request->getContent(), true);
+        $requestData = $request->request->all();
 
         if (!isset($requestData['email'])) {
             return $this->json([
                 'error' => true,
-                'message' => 'Email manquant. Veuillez fournir votre email pour la récupération du mot de passe.'
+                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
@@ -188,6 +205,7 @@ class UserController extends AbstractController
             return $this->json([
                 'error' => true,
                 'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
+                
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
@@ -201,17 +219,19 @@ class UserController extends AbstractController
         }
 
         // Rate limite à faire
-
+        $token = $JWTManager->create($user);
         return $this->json([
             'success' => true,
+            'token' => $token,
             'message' => 'Un email de réinitialisation de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l\'email pour réinitialiser votre mot de passe.'
+            
         ], JsonResponse::HTTP_OK);
     }
 
-    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['GET'])]
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST'])]
     public function resetPassword(Request $request, UserPasswordHasherInterface $passwordHasher, string $token): JsonResponse
     {
-        $requestData = json_decode($request->getContent(), true);
+        $requestData = $request->request->all();
 
         if (!$token) {
             return $this->json([
@@ -229,7 +249,7 @@ class UserController extends AbstractController
 
         $newPassword = $requestData['password'];
 
-        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $newPassword)) {
+        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/', $newPassword)) {
             return $this->json([
                 'error' => true,
                 'message' => 'Le nouveau mot de passe ne respecte pas les critères requis. Il doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et être composé d\'au moins 8 caractères.'

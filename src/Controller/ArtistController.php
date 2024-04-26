@@ -157,7 +157,6 @@ class ArtistController extends AbstractController
     
     private function updateArtist(array $data, Artist $artist, EntityManagerInterface $entityManager): JsonResponse
     {
-        // Check for missing fields
         if (empty($data['fullname']) || empty($data['label']) || empty($data['description'])) {
             return $this->json(['message' => 'Les données nécessaires à la mise à jour sont manquantes'], JsonResponse::HTTP_BAD_REQUEST);
         }
@@ -190,8 +189,8 @@ class ArtistController extends AbstractController
     }
     
 
-    #[Route('/artist/{id}', name: 'artist_get_by_id', methods: ['GET'])]
-public function getArtistById(int $id, Request $request, ArtistRepository $artistRepository): JsonResponse
+    #[Route('/artist/{fullname}', name: 'artist_get_by_id', methods: ['GET'])]
+public function getArtistById( string $fullname, Request $request, ArtistRepository $artistRepository): JsonResponse
 {
     
     $token = $this->tokenStorage->getToken();
@@ -204,21 +203,13 @@ public function getArtistById(int $id, Request $request, ArtistRepository $artis
         ], JsonResponse::HTTP_FORBIDDEN);
     }
 
-   
-    $fullname = $request->query->get('fullname');
-    if (empty($fullname)) {
-        return $this->json([
-            'message' => 'Le nom d\'artiste est obligatoire pour cette requête.'
-        ], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    if (!preg_match('/^[a-zA-ZÀ-ÿ \'-]+$/u', $fullname)) {
+    if (!preg_match('/^[a-zA-Z0-9]+$/', $fullname)) {
         return $this->json([
             'message' => 'Le format du nom d\'artiste fourni est invalide.'
         ], JsonResponse::HTTP_BAD_REQUEST);
     }
 
-    $artist = $artistRepository->findOneBy(['id' => $id, 'fullname' => $fullname]);
+    $artist = $artistRepository->findOneBy(['fullname' => $fullname]);
     if (!$artist) {
         return $this->json([
             'message' => 'Aucun artiste trouvé correspondant au nom fourni.'
