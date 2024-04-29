@@ -166,7 +166,11 @@ class Album
     }
 
     public function serializer(): array
-        {
+{
+    $songsSerialized = [];
+    foreach ($this->getSongs() as $song) {
+        $songsSerialized[] = $song->serializer(); // This calls the serializer() method in the Song class
+    }
 
     return [
         'id' => $this->getId(),
@@ -176,9 +180,9 @@ class Album
         'cover' => $this->getCover(),
         'year' => $this->getYear(),
         'createdAt' => $this->getCreatedAt()->format('Y-m-d H:i:s'),
-        "songs" => $this->getSong() ? $this->getSong()->serializer() : [],
-        ];
-        }
+        'songs' => $songsSerialized,
+    ];
+}
 
         
 }

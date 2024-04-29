@@ -26,6 +26,9 @@ class Artist
     #[ORM\Column(length: 90)]
     private ?string $label = null;
 
+    #[ORM\Column(type:'string' , length: 255 , nullable: true)]
+    private ?string $avatar = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
@@ -90,6 +93,18 @@ class Artist
         $this->description = $description;
         return $this;
     }
+
+    public function getAvatar(): ?string
+    {
+        return $this->avatar;
+    }
+    public function setAvatar(string $avatar): self
+    {
+        $this->avatar = $avatar;
+        return $this;
+    }
+
+    
     /*public function getIsActivated(): ?bool
     {
         return $this->isActivated;
@@ -130,26 +145,27 @@ class Artist
     }
 
     public function serializer(): array
-{
-    $user = $this->getUser();
-    $userData = $user ? [
-        'firstname' => $user->getFirstname(),
-        'lastname' => $user->getLastname(),
-        'sexe' => $user->getSexe() ? "Homme" : "Femme",
-        'dateBirth' => $user->getDateBirth()->format('Y-m-d'), 
-    ] : null;
-
-    return [
-        'id' => $this->getId(),
-        'fullname' => $this->getFullname(),
-        'label' => $this->getLabel(),
-        'description' => $this->getDescription(),
-        'user' => $userData,
-        'albums' => $this->getAlbums()->map(function ($album) {
-            return $album->serializer();
-        })->toArray(),
-       
-    ];
-}
+    {
+        $user = $this->getUser();
+        $userData = $user ? [
+            'firstname' => $user->getFirstname(),
+            'lastname' => $user->getLastname(),
+            'sexe' => $user->getSexe() ? "Homme" : "Femme",
+            'dateBirth' => $user->getDateBirth()->format('Y-m-d'), 
+        ] : null;
+    
+        return [
+            'id' => $this->getId(),
+            'fullname' => $this->getFullname(),
+            'label' => $this->getLabel(),
+            'description' => $this->getDescription(),
+            'avatar' => $this->getAvatar(),
+            'user' => $userData,
+            'albums' => $this->getAlbums()->map(function ($album) {
+                return $album->serializer();
+            })->toArray(),
+        ];
+    }
+    
 
 }
