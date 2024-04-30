@@ -5,6 +5,7 @@ parameters:
     # Parameter configuration
 
 services:
+    Symfony\Component\Cache\Adapter\FilesystemAdapter: ~
     # Default configuration for services in this file
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
