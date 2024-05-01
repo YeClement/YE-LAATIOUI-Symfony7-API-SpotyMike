@@ -164,15 +164,26 @@ if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
             ], JsonResponse::HTTP_CONFLICT);
         }
         
-        // Conversion du sexe en entier pour permettre les comparaisons
-        $sexe = (int) $sexe;
-        
-        if (!in_array($sexe, [0, 1], true)) {
-            return $this->json([
-                'error' => true,
-                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
-            ], JsonResponse::HTTP_BAD_REQUEST);
-        }
+    // Vérifier si la valeur de sexe est une chaîne de caractères représentant un entier
+    /*
+    if (!ctype_digit($sexe)) {
+        return $this->json([
+            'error' => true,
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }*/
+
+    // Convertir la valeur de sexe en entier
+    $sexe = (int) $sexe;
+
+    // Vérifier si la valeur du champ sexe est un entier valide (0 ou 1)
+    if (!in_array($sexe, [0, 1], true)) {
+        return $this->json([
+            'error' => true,
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
 
         // Validation du format du numéro de téléphone
         $tel = $requestData['tel'] ?? '';
