@@ -34,9 +34,10 @@ class UserController extends AbstractController
                 'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
             ], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
  
         $data = $request->request->all();
- 
+
         // Vérification si aucun champ n'est fourni
         if (empty($data)) {
             return $this->json([
@@ -44,7 +45,7 @@ class UserController extends AbstractController
                 'message' => 'Les données fournies sont invalides ou incomplètes.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
- 
+
         // Vérification si au moins un champ obligatoire est fourni
         $mandatoryFields = ['firstname', 'lastname', 'tel', 'sexe'];
         $providedMandatoryField = false;
@@ -54,6 +55,7 @@ class UserController extends AbstractController
                 break;
             }
         }
+
  
         if (!$providedMandatoryField) {
             return $this->json([
@@ -136,6 +138,7 @@ class UserController extends AbstractController
         ], JsonResponse::HTTP_OK);
     }
  
+
 
 
     #[Route('/user/{id}', name: 'user_update', methods: ['PUT'])]
@@ -223,17 +226,16 @@ class UserController extends AbstractController
         if (!isset($requestData['email'])) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
+                'message' => 'Email manquant. Veuillez fournir votre email pour la récupération du mot de passe.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         $email = $requestData['email'];
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
+        if (!preg_match($regex, $email)) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
-                
+                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.',
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
@@ -256,7 +258,9 @@ class UserController extends AbstractController
         ], JsonResponse::HTTP_OK);
     }
 
-    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST','GET'])]
+
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST', 'GET'])]
+
     public function resetPassword(Request $request, UserPasswordHasherInterface $passwordHasher, string $token): JsonResponse
     {
         $requestData = $request->request->all();

@@ -48,8 +48,11 @@ class LoginController extends AbstractController
             return new JsonResponse(['error' => true, 'message' => 'Email/password manquants.'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        // Vérification du format de l'email
-        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+
+        
+        $regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
+        if (!preg_match($regex, $email)) {
+
             return new JsonResponse(['error' => true, 'message' => 'Le format de l\'email est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
@@ -163,6 +166,7 @@ if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
                 'message' => 'Cet email est déjà utilisé par un autre compte.',
             ], JsonResponse::HTTP_CONFLICT);
         }
+
         
     // Vérifier si la valeur de sexe est une chaîne de caractères représentant un entier
     /*
@@ -172,6 +176,7 @@ if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
             'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
         ], JsonResponse::HTTP_BAD_REQUEST);
     }*/
+
 
     // Convertir la valeur de sexe en entier
     $sexe = (int) $sexe;
