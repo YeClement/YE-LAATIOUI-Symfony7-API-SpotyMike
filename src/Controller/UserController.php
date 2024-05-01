@@ -35,6 +35,7 @@ class UserController extends AbstractController
             ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
+ 
         $data = $request->request->all();
 
         // Vérification si aucun champ n'est fourni
@@ -55,13 +56,14 @@ class UserController extends AbstractController
             }
         }
 
+ 
         if (!$providedMandatoryField) {
             return $this->json([
                 'error' => true,
                 'message' => 'Au moins l\'un des champs "firstname", "lastname", "tel" ou "sexe" est obligatoire.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
-
+ 
         // Vérification des champs valides
         $validKeys = ['firstname', 'lastname', 'tel', 'sexe'];
         foreach ($data as $key => $value) {
@@ -72,7 +74,7 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
         }
-
+ 
         // Vérification du format du numéro de téléphone
         if (isset($data['tel']) && !preg_match("/^[0-9]{10}$/", $data['tel'])) {
             return $this->json([
@@ -80,7 +82,7 @@ class UserController extends AbstractController
                 'message' => 'Le format du numéro de téléphone est invalide.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
-
+ 
         // Vérification de la valeur du champ sexe
         $sexe = $data['sexe'] ?? '';
         if ($sexe !== null && $sexe !== '0' && $sexe !== '1')  {
@@ -90,7 +92,7 @@ class UserController extends AbstractController
             ], JsonResponse::HTTP_BAD_REQUEST);
      
         }
-
+ 
         // Vérification de l'existence d'un utilisateur avec le même numéro de téléphone
         if (isset($data['tel'])) {
             $existingUser = $this->entityManager->getRepository(User::class)->findOneBy(['tel' => $data['tel']]);
@@ -101,7 +103,7 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_CONFLICT);
         }
     }
-
+ 
         // Vérification de la longueur du prénom
         if (isset($data['firstname']) && (strlen($data['firstname']) < 2 || strlen($data['firstname']) > 50)) {
             return $this->json([
@@ -109,7 +111,7 @@ class UserController extends AbstractController
                 'message' => 'Erreur de validation des données.'
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
-
+ 
         // Vérification de la longueur du nom de famille
         if (isset($data['lastname']) && (strlen($data['lastname']) < 2 || strlen($data['lastname']) > 50)) {
             return $this->json([
@@ -117,24 +119,25 @@ class UserController extends AbstractController
                 'message' => 'Erreur de validation des données. Le nom de famille est trop court ou trop long.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
-
+ 
         $user = new User();
-
+ 
         // Définition des champs optionnels et fournis
         $user->setFirstname($data['firstname'] ?? '');
         $user->setLastname($data['lastname'] ?? '');
         $user->setTel($data['tel'] ?? '');
         $user->setSexe((int)$sexe);
-
+ 
         // Persistance et enregistrement des données utilisateur
         $this->entityManager->persist($user);
         $this->entityManager->flush();
-
+ 
         return $this->json([
             'error' => false,
             'message' => 'Votre inscription a bien été prise en compte'
         ], JsonResponse::HTTP_OK);
     }
+ 
 
 
 
@@ -255,7 +258,9 @@ class UserController extends AbstractController
         ], JsonResponse::HTTP_OK);
     }
 
+
     #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST', 'GET'])]
+
     public function resetPassword(Request $request, UserPasswordHasherInterface $passwordHasher, string $token): JsonResponse
     {
         $requestData = $request->request->all();
@@ -293,8 +298,6 @@ class UserController extends AbstractController
     #[Route('/account-deactivation', name: 'account_deactivation', methods: ['DELETE'])]
     public function deactivateAccount(Request $request): JsonResponse
     {
-        //à finir
-        
         $user = $this->getUser();
         if (!$user) {
             return $this->json([
