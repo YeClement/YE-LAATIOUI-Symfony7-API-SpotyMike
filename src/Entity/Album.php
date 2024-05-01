@@ -169,7 +169,7 @@ class Album
 {
     $songsSerialized = [];
     foreach ($this->getSongs() as $song) {
-        $songsSerialized[] = $song->serializer(); // This calls the serializer() method in the Song class
+        $songsSerialized[] = $song->serializer(); 
     }
 
     return [

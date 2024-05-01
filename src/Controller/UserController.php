@@ -27,87 +27,115 @@ class UserController extends AbstractController
     #[Route('/user', name: 'user_post', methods: ['POST'])]
     public function create(Request $request, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
-    // Authentication check
-    if (!$this->getUser()) {
-        return $this->json([
-            'error' => true,
-            'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
-        ], JsonResponse::HTTP_UNAUTHORIZED);
-    }
+        // Vérification de l'authentification
+        if (!$this->getUser()) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
+            ], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
-    $data =$request->request->all();
+        $data = $request->request->all();
 
-
-    // Validate only expected fields are provided
-    $validKeys = ['firstname', 'lastname', 'tel', 'sexe'];
-    foreach ($data as $key => $value) {
-        if (!in_array($key, $validKeys)) {
+        // Vérification si aucun champ n'est fourni
+        if (empty($data)) {
             return $this->json([
                 'error' => true,
                 'message' => 'Les données fournies sont invalides ou incomplètes.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
-    }
 
-    // Optional fields check
-    if (isset($data['tel']) && !preg_match("/^[0-9]{10}$/", $data['tel'])) {
-        return $this->json([
-            'error' => true,
-            'message' => 'Le format du numéro de téléphone est invalide.'
-        ], JsonResponse::HTTP_BAD_REQUEST);
-    }
-    $sexe = $data['sexe'] ?? null;
-    if ($sexe !== null && $sexe !== '0' && $sexe !== '1')  {
-        return $this->json([
-            'error' => true,
-            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
-        ], JsonResponse::HTTP_BAD_REQUEST);
+        // Vérification si au moins un champ obligatoire est fourni
+        $mandatoryFields = ['firstname', 'lastname', 'tel', 'sexe'];
+        $providedMandatoryField = false;
+        foreach ($mandatoryFields as $field) {
+            if (isset($data[$field])) {
+                $providedMandatoryField = true;
+                break;
+            }
+        }
 
-    }
-
-    // Check for existing user with the same telephone number
-    if (isset($data['tel'])) {
-        $existingUser = $this->entityManager->getRepository(User::class)->findOneBy(['tel' => $data['tel']]);
-        if ($existingUser) {
+        if (!$providedMandatoryField) {
             return $this->json([
                 'error' => true,
-                'message' => 'Conflit de données. Le numéro de téléphone est déjà utilisé par un autre utilisateur.'
-            ], JsonResponse::HTTP_CONFLICT);
+                'message' => 'Au moins l\'un des champs "firstname", "lastname", "tel" ou "sexe" est obligatoire.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Vérification des champs valides
+        $validKeys = ['firstname', 'lastname', 'tel', 'sexe'];
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $validKeys)) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Les données fournies sont invalides ou incomplètes.'
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+        }
+
+        // Vérification du format du numéro de téléphone
+        if (isset($data['tel']) && !preg_match("/^[0-9]{10}$/", $data['tel'])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Le format du numéro de téléphone est invalide.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Vérification de la valeur du champ sexe
+        $sexe = $data['sexe'] ?? '';
+        if ($sexe !== null && $sexe !== '0' && $sexe !== '1')  {
+            return $this->json([
+                'error' => true,
+                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+     
+        }
+
+        // Vérification de l'existence d'un utilisateur avec le même numéro de téléphone
+        if (isset($data['tel'])) {
+            $existingUser = $this->entityManager->getRepository(User::class)->findOneBy(['tel' => $data['tel']]);
+            if ($existingUser) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Conflit de données. Le numéro de téléphone est déjà utilisé par un autre utilisateur.'
+                ], JsonResponse::HTTP_CONFLICT);
         }
     }
 
-    if (isset($data['firstname']) && (strlen($data['firstname']) < 2 || strlen($data['firstname']) > 50)) {
+        // Vérification de la longueur du prénom
+        if (isset($data['firstname']) && (strlen($data['firstname']) < 2 || strlen($data['firstname']) > 50)) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Erreur de validation des données.'
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Vérification de la longueur du nom de famille
+        if (isset($data['lastname']) && (strlen($data['lastname']) < 2 || strlen($data['lastname']) > 50)) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Erreur de validation des données. Le nom de famille est trop court ou trop long.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $user = new User();
+
+        // Définition des champs optionnels et fournis
+        $user->setFirstname($data['firstname'] ?? '');
+        $user->setLastname($data['lastname'] ?? '');
+        $user->setTel($data['tel'] ?? '');
+        $user->setSexe((int)$sexe);
+
+        // Persistance et enregistrement des données utilisateur
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
         return $this->json([
-            'error' => true,
-            'message' => 'Erreur de validation des données.'
-        ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            'error' => false,
+            'message' => 'Votre inscription a bien été prise en compte'
+        ], JsonResponse::HTTP_OK);
     }
 
-    if (isset($data['lastname']) && (strlen($data['lastname']) < 2 || strlen($data['lastname']) > 50)) {
-        return $this->json([
-            'error' => true,
-            'message' => 'Erreur de validation des données. Le nom de famille est trop court ou trop long.'
-        ], JsonResponse::HTTP_BAD_REQUEST);
-    }
-
-    $user = new User();
-
-    // Set optional and provided fields
-    $user->setFirstname($data['firstname'] ?? '');
-    $user->setLastname($data['lastname'] ?? '');
-    $user->setTel($data['tel'] ?? '');
-    $user->setSexe(isset($data['sexe']) ? (int) $data['sexe'] : '');
-
-
-    // Persist and flush user data
-    $this->entityManager->persist($user);
-    $this->entityManager->flush();
-
-    return $this->json([
-        'error' => false,
-        'message' => 'Votre inscription a bien été prise en compte'
-    ], JsonResponse::HTTP_OK);
-}
 
 
     #[Route('/user/{id}', name: 'user_update', methods: ['PUT'])]
@@ -195,17 +223,16 @@ class UserController extends AbstractController
         if (!isset($requestData['email'])) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
+                'message' => 'Email manquant. Veuillez fournir votre email pour la récupération du mot de passe.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         $email = $requestData['email'];
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
+        if (!preg_match($regex, $email)) {
             return $this->json([
                 'error' => true,
-                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.'
-                
+                'message' => 'Le format de l\'email est invalide. Veuillez entrer un email valide.',
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
@@ -228,7 +255,7 @@ class UserController extends AbstractController
         ], JsonResponse::HTTP_OK);
     }
 
-    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST'])]
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST', 'GET'])]
     public function resetPassword(Request $request, UserPasswordHasherInterface $passwordHasher, string $token): JsonResponse
     {
         $requestData = $request->request->all();

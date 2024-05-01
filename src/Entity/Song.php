@@ -25,9 +25,17 @@ class Song
     #[ORM\ManyToOne(targetEntity: Album::class, inversedBy: 'songs')]
     private ?Album $album = null;
 
+    #[ORM\Column(type: "boolean")]
+    private bool $featuring = false; // Field to mark if this is a featuring song
+
+    // Optional: Reference to the featured artist
+    #[ORM\ManyToOne(targetEntity: Artist::class)]
+    #[ORM\JoinColumn(name: "featured_artist_id", referencedColumnName: "id", nullable: true)]
+    private ?Artist $featuredArtist = null;
+
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable(); 
+        $this->createdAt = new \DateTimeImmutable(); // Ensure the creation date is automatically set
     }
 
     public function getId(): ?int
@@ -76,20 +84,45 @@ class Song
     public function setAlbum(?Album $album): self
     {
         $this->album = $album;
-        if ($album !== null && !$album->getSongs()->contains($this)) {
-            $album->addSong($this);
-        }
+        return $this;
+    }
+
+    public function isFeaturing(): bool
+    {
+        return $this->featuring;
+    }
+
+    public function setFeaturing(bool $featuring): self
+    {
+        $this->featuring = $featuring;
+        return $this;
+    }
+
+    public function getFeaturedArtist(): ?Artist
+    {
+        return $this->featuredArtist;
+    }
+
+    public function setFeaturedArtist(?Artist $artist): self
+    {
+        $this->featuredArtist = $artist;
         return $this;
     }
 
     public function serializer(): array
     {
-        return [
+        $data = [
             'id' => $this->getId(),
             'title' => $this->getTitle(),
             'cover' => $this->getCover(),
-            'createdAt' => $this->getCreatedAt()->format('c'), 
-            'album' => $this->getAlbum() ? $this->getAlbum()->getId() : []
+            'createdAt' => $this->getCreatedAt()->format('c')
         ];
+
+        if ($this->isFeaturing() && $this->getFeaturedArtist()) {
+            $data['featuring'] = true;
+            $data['featuredArtist'] = $this->getFeaturedArtist()->getFullname();
+        }
+
+        return $data;
     }
 }

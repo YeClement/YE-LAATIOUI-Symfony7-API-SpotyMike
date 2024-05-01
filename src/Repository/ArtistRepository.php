@@ -20,7 +20,14 @@ class ArtistRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Artist::class);
     }
-
+    public function findAllWithPagination(int $page, int $limit): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+    
+        return $qb->getQuery()->getResult();
+    }
     //    /**
     //     * @return Artist[] Returns an array of Artist objects
     //     */

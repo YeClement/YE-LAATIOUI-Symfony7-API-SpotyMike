@@ -47,15 +47,11 @@ class LoginController extends AbstractController
             return new JsonResponse(['error' => true, 'message' => 'Email/password manquants.'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-         //email format non valide 
-        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-        return new JsonResponse(['error' => true, 'message' => 'Le format de l\'emaiOl est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
-        }
         
-        /*$regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
+        $regex = '/^(?:(?:[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+)|(?:\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\"))@(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-\x{2014}]*[a-zA-Z0-9])?\.)*(?:[a-zA-Z\x{2014}]{2,}|(?:\[(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:IPv6:[a-fA-F0-9:]+))\])))$/iu';
         if (!preg_match($regex, $email)) {
             return new JsonResponse(['error' => true, 'message' => 'Le format de l\'email est invalide.'], JsonResponse::HTTP_BAD_REQUEST);
-        }*/
+        }
 
         $passwordRequirements = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/';
         if (!preg_match($passwordRequirements, $data['password'])) {
@@ -144,13 +140,13 @@ class LoginController extends AbstractController
             ], JsonResponse::HTTP_CONFLICT);
         }
         //Convertir le type en int pour permettre des comparaisons avec d'autres valeurs int
-        $sexe = (int) $sexe;
-        
-        if ($sexe !== null && $sexe !== 0 && $sexe !== 1) {
+        $sexe = $data['sexe'] ?? '';
+        if ($sexe !== null && $sexe !== '0' && $sexe !== '1')  {
             return $this->json([
                 'error' => true,
-                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
             ], JsonResponse::HTTP_BAD_REQUEST);
+     
         }
 
         $tel = $requestData['tel'] ?? '';

@@ -7,38 +7,40 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ArtistRepository::class)]
 class Artist
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: "integer")]
     private ?int $id = null;
 
     #[ORM\OneToOne(inversedBy: 'artist', targetEntity: User::class, cascade: ['persist', 'remove'])]
-     private ?User $user = null;
+    private ?User $user = null;
 
-    #[ORM\Column(length: 90)]
+    #[ORM\Column(type: "string", length: 90)]
     private ?string $fullname = null;
 
-    #[ORM\Column(length: 90)]
+    #[ORM\Column(type: "string", length: 90)]
     private ?string $label = null;
 
-    #[ORM\Column(type:'string' , length: 255 , nullable: true)]
+    #[ORM\Column(type: "string", length: 255, nullable: true)]
     private ?string $avatar = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    /*#[ORM\Column]
-    private ?bool $isactivated = true;*/
+    #[ORM\Column(type: "datetime_immutable")]
+    private ?\DateTimeImmutable $createdAt = null;
 
+    
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: "follower_id", referencedColumnName: "id", nullable: true)]
+    private ?User $follower = null;
 
     #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Album::class, cascade: ['persist', 'remove'])]
     private Collection $albums;
-
 
     public function __construct()
     {
@@ -98,28 +100,35 @@ class Artist
     {
         return $this->avatar;
     }
-    public function setAvatar(string $avatar): self
+
+    public function setAvatar(?string $avatar): self
     {
         $this->avatar = $avatar;
         return $this;
     }
 
-    
-    /*public function getIsActivated(): ?bool
+    public function getCreatedAt(): ?\DateTimeImmutable
     {
-        return $this->isActivated;
+        return $this->createdAt;
     }
 
-    public function setIsActivated(bool $isActivated): self
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
-        $this->isActivated = $isActivated;
+        $this->createdAt = $createdAt;
         return $this;
-    }*/
+    }
 
-    
-    /**
-     * @return Collection<int, Album>
-     */
+    public function getFollower(): ?User
+    {
+        return $this->follower;
+    }
+
+    public function setFollower(?User $follower): self
+    {
+        $this->follower = $follower;
+        return $this;
+    }
+
     public function getAlbums(): Collection
     {
         return $this->albums;
@@ -129,7 +138,7 @@ class Artist
     {
         if (!$this->albums->contains($album)) {
             $this->albums->add($album);
-            $album->setArtistUserIdUser($this);
+            $album->setArtist($this);
         }
         return $this;
     }
@@ -137,12 +146,15 @@ class Artist
     public function removeAlbum(Album $album): self
     {
         if ($this->albums->removeElement($album)) {
-            if ($album->getArtistUserIdUser() === $this) {
-                $album->setArtistUserIdUser(null);
+            if ($album->getArtist() === $this) {
+                $album->setArtist(null);
             }
         }
         return $this;
     }
+
+
+
 
     public function serializer(): array
     {
