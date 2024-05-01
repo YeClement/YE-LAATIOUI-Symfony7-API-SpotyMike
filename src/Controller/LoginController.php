@@ -63,23 +63,23 @@ class LoginController extends AbstractController
         $user = $userRepository->findOneBy(["email" => $email]);
 
         // Vérification si l'utilisateur existe et si le mot de passe est correct
-        if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
-            // Gérer le compteur de tentatives de connexion échouées
-            return new JsonResponse(['error' => true, 'message' => 'Email/mot de passe incorrect(s).'], JsonResponse::HTTP_UNAUTHORIZED);
-        }
+if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
+    // Gérer le compteur de tentatives de connexion échouées
+    $email = $request->request->get('email');
+    $cacheKey = 'login_attempts_' . str_replace(['@', '.'], ['_', '_'], $email);
+    $loginAttempts = $cache->getItem($cacheKey)->get() ?? 0;
+    $loginAttempts++;
+    $cache->getItem($cacheKey)->set($loginAttempts);
+    $cache->getItem($cacheKey)->expiresAfter(120); // Bloquer pour 2 minutes après un certain nombre de tentatives
 
-        // Gestion du compteur de tentatives de connexion échouées
-        $email = $request->request->get('email');
-        $cacheKey = 'login_attempts_' . str_replace(['@', '.'], ['_', '_'], $email);
-        $loginAttempts = $cache->getItem($cacheKey)->get() ?? 0;
-        $loginAttempts++;
-        $cache->getItem($cacheKey)->set($loginAttempts);
-        $cache->getItem($cacheKey)->expiresAfter(120); // Bloquer pour 2 minutes après un certain nombre de tentatives
+    // Vérifier si le nombre maximal de tentatives est dépassé
+    if ($loginAttempts <= 5) {
+        return new JsonResponse(['error' => true, 'message' => 'Trop de tentatives de connexion (5 max). Veuillez réessayer ultérieurement - 2 min d\'attente.'], JsonResponse::HTTP_TOO_MANY_REQUESTS);
+    } else {
+        return new JsonResponse(['error' => true, 'message' => 'Email/mot de passe incorrect(s).'], JsonResponse::HTTP_UNAUTHORIZED);
+    }
+}    
 
-        // Vérifier si le nombre maximal de tentatives est dépassé
-        if ($loginAttempts > 5) {
-            return new JsonResponse(['error' => true, 'message' => 'Trop de tentatives de connexion (5 max). Veuillez réessayer ultérieurement - 2 min d\'attente.'], JsonResponse::HTTP_TOO_MANY_REQUESTS);
-        }
 
         // Vérification si le compte de l'utilisateur est actif
         if (!$user->getActive()) {
