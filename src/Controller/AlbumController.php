@@ -79,7 +79,7 @@ class AlbumController extends AbstractController
         ], JsonResponse::HTTP_OK);
     }
  
-   #[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
+   /*#[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
     public function getAlbum(Request $request, string $id): JsonResponse
     {
         // Vérification de l'authentification de l'utilisateur
@@ -118,7 +118,7 @@ class AlbumController extends AbstractController
             'error' => false,
             'album' => $albumData
         ], JsonResponse::HTTP_OK);
-    }
+    }*/
  
     #[Route('/album/search', name: 'album_search', methods: ['GET'])]
     public function search(Request $request): JsonResponse
