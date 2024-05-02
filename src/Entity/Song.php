@@ -109,7 +109,7 @@ class Song
         return $this;
     }
 
-    public function serializer(): array
+    public function serializer(bool $includeFeaturing = false): array
     {
         $data = [
             'id' => $this->getId(),
@@ -118,8 +118,8 @@ class Song
             'createdAt' => $this->getCreatedAt()->format('c')
         ];
 
-        if ($this->isFeaturing() && $this->getFeaturedArtist()) {
-            $data['featuring'] = true;
+        if ($includeFeaturing && $this->isFeaturing() && $this->getFeaturedArtist()) {
+          
             $data['featuredArtist'] = $this->getFeaturedArtist()->getFullname();
         }
 

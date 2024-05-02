@@ -31,13 +31,18 @@ class Artist
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\Column(type: "datetime_immutable")]
+    #[ORM\Column(type: "datetime_immutable", nullable: true)]
     private ?\DateTimeImmutable $createdAt = null;
+
+    #[ORM\Column(length: 10)]
+    private $active = true;
 
     
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(name: "follower_id", referencedColumnName: "id", nullable: true)]
     private ?User $follower = null;
+
+    
 
     #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Album::class, cascade: ['persist', 'remove'])]
     private Collection $albums;
@@ -104,6 +109,18 @@ class Artist
     public function setAvatar(?string $avatar): self
     {
         $this->avatar = $avatar;
+        return $this;
+    }
+
+
+    public function getActive(): ?bool
+    {
+        return $this->active ;
+    }
+
+    public function setActive(bool $active): self
+    {
+        $this->active = $active;
         return $this;
     }
 

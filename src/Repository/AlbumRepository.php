@@ -20,7 +20,26 @@ class AlbumRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Album::class);
     }
+    public function findAllWithPagination(int $page, int $limit): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+    
+        return $qb->getQuery()->getResult();
+    }
 
+
+
+    public function findByCategoryWithPagination($category, $page, $limit) {
+        $qb = $this->createQueryBuilder('a')
+            ->where('a.category = :category')
+            ->setParameter('category', $category)
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+    
+        return $qb->getQuery()->getResult();
+    }
     //    /**
     //     * @return Album[] Returns an array of Album objects
     //     */

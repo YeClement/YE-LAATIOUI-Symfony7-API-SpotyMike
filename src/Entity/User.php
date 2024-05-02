@@ -33,7 +33,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 10)]
     private $active = true;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255 , nullable :true)]
     private ?string $password = null;
 
     #[ORM\Column(type: "datetime_immutable")]

@@ -27,24 +27,38 @@ class ArtistController extends AbstractController
         $this->tokenStorage = $tokenStorage;
     }
 
-   
-
-
-
-    #[Route('/artist/{id}', name: 'artist_delete', methods: 'DELETE')]
-    public function delete(int $id): JsonResponse
+    #[Route('/artist', name: 'artist_deactivation', methods: ['DELETE'])]
+    public function deactivateArtistAccount(EntityManagerInterface $entityManager): JsonResponse
     {
-        $artist = $this->artistRepository->find($id);
+        $artist = $this->getUser();  // Assuming the artist is authenticated in the same way as a user
 
         if (!$artist) {
-            return new JsonResponse(['error' => 'Artiste'], JsonResponse::HTTP_NOT_FOUND);
+            return $this->json([
+                'error' => true,
+                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
+            ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
-        $this->entityManager->remove($artist);
-        $this->entityManager->flush();
+        if (!$artist->getActive()) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Ce compte artiste est déjà désactivé.'
+            ],  JsonResponse::HTTP_CONFLICT); 
+        }
 
-        return new JsonResponse(['message' => 'Artist deleted successfully'], JsonResponse::HTTP_OK);
+        $artist->setActive(false);
+        $entityManager->persist($artist);
+        $entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Le compte artiste a été désactivé avec succès.'
+        ], JsonResponse::HTTP_OK);
     }
+
+
+
+   
 
     #[Route('/artist', name: 'artist_get_all', methods: ['GET'])]
     public function getAllArtists(Request $request , TokenStorageInterface $tokenStorage): JsonResponse
@@ -59,13 +73,13 @@ class ArtistController extends AbstractController
                 'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
             ], JsonResponse::HTTP_UNAUTHORIZED);
         }
-
-        $currentPage = $request->query->get('currentPage');
+//1
+        $currentPage = $request->query->get('currentPage',1);
         $limit = (int) $request->query->get('limit', 5);
-
-        if (!filter_var($currentPage, FILTER_VALIDATE_INT) || null === $currentPage ||$currentPage < 1 || $limit < 1) {
+        if (!filter_var($currentPage, FILTER_VALIDATE_INT)  ||$currentPage < 1 || $limit < 1) {
             return new JsonResponse(['error' => true, 'message' => 'Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide.'], JsonResponse::HTTP_BAD_REQUEST);
         }
+        
         $currentPage = (int) $currentPage;
         $artists = $this->artistRepository->findAllWithPagination($currentPage, $limit);
         if (!$artists) {
@@ -126,10 +140,20 @@ public function getArtistByFullname(string $fullname, Request $request, TokenSto
         ], JsonResponse::HTTP_UNAUTHORIZED);
     }
 
-    if (empty($fullname)) {
-        return new JsonResponse(['error' => true, 'message' => 'Le nom d\'artiste est obligatoire pour cette requête.'], JsonResponse::HTTP_BAD_REQUEST);
+    if (!isset($fullname) || $fullname === '') {
+        return new JsonResponse([
+            'error' => true,
+            'message' => 'Le nom d\'artiste est obligatoire pour cette requête.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
     }
 
+
+    if (!preg_match('/^[\w \' ,-]{1,30}$/', $fullname)) {
+        return new JsonResponse([
+            'error' => true,
+            'message' => "Le format du nom d'artiste fourni est invalide. Les noms doivent être de 1 à 30 caractères alphanumériques ou certains caractères spéciaux."
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
     $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
     if (!$artist) {
         return new JsonResponse(['error' => true, 'message' => 'Aucun artiste trouvé correspondant au nom fourni.'], JsonResponse::HTTP_NOT_FOUND);
@@ -145,19 +169,13 @@ public function serializeArtist(Artist $artist): array
     $user = $artist->getUser();  // This is the artist's user information
 
     $featuringSongs = [];
-    foreach ($artist->getAlbums() as $album) {
-        foreach ($album->getSongs() as $song) {
-            if ($song->isFeaturing()) {
-                $featuringSongs[] = [
-                    'id' => $song->getId(),
-                    'title' => $song->getTitle(),
-                    'cover' => $song->getCover(),
-                    'createdAt' => $song->getCreatedAt()->format('c'),
-                    'artist' => $song->getFeaturedArtist() ? $song->getFeaturedArtist()->getFullname() : null
-                ];
+        foreach ($artist->getAlbums() as $album) {
+            foreach ($album->getSongs() as $song) {
+                if ($song->isFeaturing() && $song->getFeaturedArtist()) {
+                    $featuringSongs[] = $song->serializer(true); // Using the updated serializer from the Song entity
+                }
             }
         }
-    }
 
     $Follower = $artist->getFollower() ?? '';
    
@@ -193,23 +211,6 @@ public function serializeArtist(Artist $artist): array
         }, $artist->getAlbums()->toArray())
     ];
 }
-
-   /* private function getFeaturingSongs(Song $song): array
-    {
-        
-        'albums' => $artist->getAlbums()->map(function ($album) {
-            return $album->serializer();
-        })->toArray(),
-        return $song->getSong()->map(function ($song) {
-            return [
-                'id' => $song->getId(),
-                'title' => $song->getTitle(),
-                'cover' => $song->getCover(),
-                'artist' => $song->getArtist()->getFullname(),
-                'createdAt' => $song->getCreatedAt()->format('Y-m-d'),
-            ];
-        })->toArray();
-    }*/
 
     private function getAlbumsData(Artist $artist): array
     {
@@ -280,6 +281,8 @@ public function serializeArtist(Artist $artist): array
                 'message' => 'L\'id du label et le fullname sont obligatoires.'
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
+
+      
     
         if (strlen($requestData['label']) > 50) {
             return $this->json([
@@ -320,7 +323,7 @@ public function serializeArtist(Artist $artist): array
             }
     // TO CHANGE THE SIZE AFTER
             $fileSize = strlen($avatarBinary);
-            if ($fileSize < 104 || $fileSize > 7340032) { 
+            if ($fileSize <  1048576 || $fileSize > 7340032) { 
                 return $this->json([
                     'error' => true,
                     'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1MB et 7MB.'
@@ -337,11 +340,13 @@ public function serializeArtist(Artist $artist): array
             }
         }
     
+       
         $artist = new Artist();
         $artist->setUser($user);
         $artist->setFullname($requestData['fullname']);
         $artist->setLabel($requestData['label']);
         $artist->setDescription($requestData['description'] ?? '');
+        $artist->setCreatedAt(new \DateTimeImmutable());
         $artist->setAvatar($imageName); 
     
         $entityManager->persist($artist);
