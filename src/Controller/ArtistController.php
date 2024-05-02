@@ -323,7 +323,7 @@ public function serializeArtist(Artist $artist): array
             }
     // TO CHANGE THE SIZE AFTER
             $fileSize = strlen($avatarBinary);
-            if ($fileSize < 104 || $fileSize > 7340032) { 
+            if ($fileSize <  1048576 || $fileSize > 7340032) { 
                 return $this->json([
                     'error' => true,
                     'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1MB et 7MB.'
@@ -340,6 +340,7 @@ public function serializeArtist(Artist $artist): array
             }
         }
     
+       
         $artist = new Artist();
         $artist->setUser($user);
         $artist->setFullname($requestData['fullname']);

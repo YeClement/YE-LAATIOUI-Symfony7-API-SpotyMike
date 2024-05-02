@@ -21,14 +21,18 @@ class Album
     #[ORM\Column(type: 'string', length: 20)]
     private ?string $categ = null;
 
-    #[ORM\Column(type: 'string', length: 20)]
+    #[ORM\Column(type: 'string', length: 20 ,nullable :true)]
     private ?string $label = null;
 
     #[ORM\Column(type: 'string', length: 125)]
     private ?string $cover = null;
 
-    #[ORM\Column(type: 'string')]
+    #[ORM\Column(type: 'string' , length: 20 ,nullable :true )]
     private ?int $year = null;
+
+    #[ORM\Column(length: 10)]
+    private $visibility = true;
+
 
     #[ORM\ManyToOne(targetEntity: Artist::class, inversedBy: 'albums')]
     #[ORM\JoinColumn(nullable: false)]
@@ -110,6 +114,17 @@ class Album
     public function setYear(int $year): self
     {
         $this->year = $year;
+        return $this;
+    }
+
+    public function getVisibility(): ?bool
+    {
+        return $this->visibility ;
+    }
+
+    public function setVisibility(bool $visibility): self
+    {
+        $this->visibility = $visibility;
         return $this;
     }
 
