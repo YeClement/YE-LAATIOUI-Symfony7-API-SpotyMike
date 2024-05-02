@@ -345,6 +345,7 @@ public function serializeArtist(Artist $artist): array
         $artist->setFullname($requestData['fullname']);
         $artist->setLabel($requestData['label']);
         $artist->setDescription($requestData['description'] ?? '');
+        $artist->setCreatedAt(new \DateTimeImmutable());
         $artist->setAvatar($imageName); 
     
         $entityManager->persist($artist);
