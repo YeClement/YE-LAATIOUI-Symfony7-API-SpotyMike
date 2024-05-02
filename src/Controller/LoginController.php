@@ -26,6 +26,16 @@ class LoginController extends AbstractController
         $this->repository = $entityManager->getRepository(User::class);
     }
 
+    private function validateSexe(?string $sexe): bool
+    {
+        // Allow the sexe field to be an empty string
+        if ($sexe === '') {
+            return true;
+        }
+
+        // Check if the non-empty sexe is strictly '0' or '1'
+        return in_array($sexe, ['0', '1'], true);
+    }
     #[Route('/', name: 'app_index', methods: ['GET'])]
     public function index(Request $request): JsonResponse
     {
@@ -169,8 +179,8 @@ if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
 
         
     // Vérifier si la valeur de sexe est une chaîne de caractères représentant un entier
-    /*
-    if (!ctype_digit($sexe)) {
+    
+   /* if (!ctype_digit($sexe)) {
         return $this->json([
             'error' => true,
             'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
@@ -179,13 +189,11 @@ if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
 
 
     // Convertir la valeur de sexe en entier
-    $sexe = (int) $sexe;
-
-    // Vérifier si la valeur du champ sexe est un entier valide (0 ou 1)
-    if (!in_array($sexe, [0, 1], true)) {
+    $sexe = $request->request->get('sexe', '');
+    if (!$this->validateSexe($sexe)) {
         return $this->json([
             'error' => true,
-            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
         ], JsonResponse::HTTP_BAD_REQUEST);
     }
 

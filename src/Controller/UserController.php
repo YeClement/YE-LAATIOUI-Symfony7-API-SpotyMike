@@ -24,6 +24,17 @@ class UserController extends AbstractController
         $this->tokenVerifierService = $tokenVerifierService;
     }
 
+    private function validateSexe(?string $sexe): bool
+    {
+        // Allow the sexe field to be an empty string
+        if ($sexe === '') {
+            return true;
+        }
+
+        // Check if the non-empty sexe is strictly '0' or '1'
+        return in_array($sexe, ['0', '1'], true);
+    }
+
     #[Route('/user', name: 'user_post', methods: ['POST'])]
     public function create(Request $request, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
@@ -34,6 +45,8 @@ class UserController extends AbstractController
                 'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
             ], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
+       
 
  
         $data = $request->request->all();
@@ -84,14 +97,28 @@ class UserController extends AbstractController
         }
  
         // Vérification de la valeur du champ sexe
-        $sexe = $data['sexe'] ?? '';
-        if ($sexe !== null && $sexe !== '0' && $sexe !== '1')  {
-            return $this->json([
-                'error' => true,
-                'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
-            ], JsonResponse::HTTP_BAD_REQUEST);
-     
-        }
+       /* $sexe = $request->request->get('sexe');
+        $sexe = (int) $sexe;
+    /*if (!in_array($sexe, [0, 1], true)) {
+        return $this->json([
+            'error' => true,
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    } if (!ctype_digit($sexe) ) {
+        return $this->json([
+            'error' => true,
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }*/
+
+    // Retrieve sexe and perform validation
+    $sexe = $request->request->get('sexe', '');
+    if (!$this->validateSexe($sexe)) {
+        return $this->json([
+            'error' => true,
+            'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.'
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
  
         // Vérification de l'existence d'un utilisateur avec le même numéro de téléphone
         if (isset($data['tel'])) {
@@ -219,9 +246,10 @@ class UserController extends AbstractController
     }
 
     #[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
-    public function passwordLost(Request $request , JWTTokenManagerInterface $JWTManager): JsonResponse
+    public function passwordLost(Request $request , JWTTokenManagerInterface $JWTManager, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
         $requestData = $request->request->all();
+        $password = $request->request->get('password');
 
         if (!isset($requestData['email'])) {
             return $this->json([
@@ -249,6 +277,7 @@ class UserController extends AbstractController
         }
 
         // Rate limite à faire
+   
         $token = $JWTManager->create($user);
         return $this->json([
             'success' => true,
@@ -295,27 +324,33 @@ class UserController extends AbstractController
             'message' => 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.'
         ], JsonResponse::HTTP_OK);
     }
-    #[Route('/account-deactivation', name: 'account_deactivation', methods: ['DELETE'])]
-    public function deactivateAccount(Request $request): JsonResponse
-    {
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
-            ], JsonResponse::HTTP_UNAUTHORIZED);
-        }
-    
-        if ($user->isDeactivated()) {
-            return $this->json([
-                'error' => true,
-                'message' => 'Le compte est déjà désactivé.'
-            ], JsonResponse::HTTP_CONFLICT);
-        }
+ 
 
+#[Route('/account-deactivation', name: 'account_deactivation', methods: ['DELETE'])]
+public function deactivateAccount(Request $request , EntityManagerInterface $entityManager): JsonResponse
+{
+    $user = $this->getUser();
+    if (!$user) {
         return $this->json([
-            'success' => true,
-            'message' => 'Votre compte a été désactivé avec succès. Nous sommes désolés de vous voir partir.'
-        ], JsonResponse::HTTP_OK);
+            'error' => true,
+            'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
+        ], JsonResponse::HTTP_UNAUTHORIZED);
     }
+
+    if (!$user->getActive()) {
+        return $this->json([
+            'error' => true,
+            'message' => 'Le compte est déjà désactivé.'
+        ], JsonResponse::HTTP_CONFLICT);
+    }
+
+    $user->setActive(false);
+    $entityManager->persist($user);
+    $entityManager->flush();
+
+    return $this->json([
+        'success' => true,
+        'message' => 'Votre compte a été désactivé avec succès. Nous sommes désolés de vous voir partir.'
+    ], JsonResponse::HTTP_OK);
+}
 }
